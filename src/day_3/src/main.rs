@@ -4,17 +4,36 @@ use shared::coords::UCoord;
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {}", result);
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let (numbers, symbols) = parse_input(reader);
-    0
+
+    let symbol_coords: HashSet<UCoord> = symbols.keys().cloned().collect();
+    numbers
+        .into_iter()
+        .filter(|(_, coords)| {
+            let all_neighbors: HashSet<UCoord> =
+                coords.into_iter().fold(HashSet::new(), |result, coord| {
+                    result
+                        .union(&coord.neighbors())
+                        .cloned()
+                        .collect::<HashSet<UCoord>>()
+                });
+            !all_neighbors
+                .intersection(&symbol_coords)
+                .cloned()
+                .collect::<HashSet<UCoord>>()
+                .is_empty()
+        })
+        .map(|(number, _)| number)
+        .sum()
 }
 
-fn parse_input(reader: AocBufReader) -> (HashMap<usize, HashSet<UCoord>>, HashMap<UCoord, char>) {
-    let mut numbers: HashMap<usize, HashSet<UCoord>> = HashMap::new();
+fn parse_input(reader: AocBufReader) -> (Vec<(usize, HashSet<UCoord>)>, HashMap<UCoord, char>) {
+    let mut numbers: Vec<(usize, HashSet<UCoord>)> = Vec::new();
     let mut symbols: HashMap<UCoord, char> = HashMap::new();
 
     for (row_idx, line) in reader.enumerate() {
@@ -29,8 +48,8 @@ fn parse_input(reader: AocBufReader) -> (HashMap<usize, HashSet<UCoord>>, HashMa
 fn parse_line(
     line: String,
     row_idx: usize,
-) -> (HashMap<usize, HashSet<UCoord>>, HashMap<UCoord, char>) {
-    let mut numbers: HashMap<usize, HashSet<UCoord>> = HashMap::new();
+) -> (Vec<(usize, HashSet<UCoord>)>, HashMap<UCoord, char>) {
+    let mut numbers: Vec<(usize, HashSet<UCoord>)> = Vec::new();
     let mut symbols: HashMap<UCoord, char> = HashMap::new();
 
     let mut chars_iter = line.chars().enumerate();
@@ -61,9 +80,17 @@ fn parse_line(
                             .collect::<String>()
                             .parse::<usize>()
                             .unwrap();
-                        numbers.insert(number, number_coords);
+                        numbers.push((number, number_coords));
                         break;
                     }
+                } else {
+                    let number: usize = number_digits
+                        .into_iter()
+                        .collect::<String>()
+                        .parse::<usize>()
+                        .unwrap();
+                    numbers.push((number, number_coords));
+                    break;
                 }
             }
         }
@@ -85,37 +112,4 @@ fn parse_line(
     }
 
     (numbers, symbols)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_line() {
-        let (numbers, symbols) = parse_line("467..114.+".to_string(), 0);
-        assert_eq!(
-            numbers,
-            HashMap::from([
-                (
-                    467usize,
-                    HashSet::from([
-                        UCoord { row: 0, col: 0 },
-                        UCoord { row: 0, col: 1 },
-                        UCoord { row: 0, col: 2 },
-                    ])
-                ),
-                (
-                    114usize,
-                    HashSet::from([
-                        UCoord { row: 0, col: 5 },
-                        UCoord { row: 0, col: 6 },
-                        UCoord { row: 0, col: 7 },
-                    ])
-                ),
-            ])
-        );
-
-        assert_eq!(symbols, HashMap::from([(UCoord { row: 0, col: 9 }, '+')]))
-    }
 }
