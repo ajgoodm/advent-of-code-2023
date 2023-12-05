@@ -2,10 +2,10 @@ use shared::input::AocBufReader;
 
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
-    println!("part 1 result: {}", result);
+    println!("part 1 result: {result}");
 
     let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
-    println!("part 2 result: {}", result);
+    println!("part 2 result: {result}");
 }
 
 struct Game {

@@ -28,7 +28,7 @@ fn part_1(reader: AocBufReader) {
         .into_iter()
         .map(|line| extract_number_part_1(line))
         .sum();
-    println!("part 1 result: {}", result);
+    println!("part 1 result: {result}");
 }
 
 fn extract_number_part_1(line: String) -> usize {
@@ -56,7 +56,7 @@ fn part_2(reader: AocBufReader) {
         .into_iter()
         .map(|line| extract_number_part_2(line))
         .sum();
-    println!("part 2 result: {}", result);
+    println!("part 2 result: {result}");
 }
 
 fn extract_number_left_to_right(line: &str) -> char {
