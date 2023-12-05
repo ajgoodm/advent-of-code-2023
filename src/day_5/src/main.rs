@@ -137,11 +137,6 @@ impl RangeMap {
         self.src_start + self.rng_len
     }
 
-    /// dest range end (exclusive!!!)
-    fn dest_end(&self) -> isize {
-        self.dest_start + self.rng_len
-    }
-
     fn src_range(&self) -> Range<isize> {
         Range {
             start: self.src_start,
@@ -202,16 +197,8 @@ impl SrcDestMap {
 
     fn map_ranges(&self, ranges: Vec<Range<isize>>) -> Vec<Range<isize>> {
         let mut dest_ranges: Vec<Range<isize>> = Vec::new();
-        for range in ranges {
-            dest_ranges.extend(self.map_range(range));
-        }
+        let mut unmapped: Vec<Range<isize>> = ranges;
 
-        dest_ranges
-    }
-
-    fn map_range(&self, range: Range<isize>) -> Vec<Range<isize>> {
-        let mut dest_ranges: Vec<Range<isize>> = Vec::new();
-        let mut unmapped: Vec<Range<isize>> = vec![range];
         for map in self.range_maps.iter() {
             let (_dest, _unmapped) = map.map_ranges(unmapped);
             unmapped = _unmapped;
