@@ -11,11 +11,53 @@ static SRC_DEST_RE: Lazy<Regex> =
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/test.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
-    parse_input(reader);
-    0
+    let (seeds, maps) = parse_input(reader);
+    seeds
+        .into_iter()
+        .map(|seed| get_location_part_1(seed, &maps))
+        .min()
+        .unwrap()
+}
+
+fn part_2(reader: AocBufReader) -> usize {
+    let (seed_ranges, maps) = parse_input(reader);
+    let mut seed_ranges = seed_ranges.into_iter();
+
+    let mut min_location_val: usize = usize::MAX;
+    while let Some(seed_range_start) = seed_ranges.next() {
+        let seed_range_len = seed_ranges
+            .next()
+            .expect("seed range vec should have even length");
+        let min_for_this_range = (seed_range_start..(seed_range_start + seed_range_len))
+            .map(|seed| get_location_part_1(seed, &maps))
+            .min()
+            .unwrap();
+
+        if min_for_this_range < min_location_val {
+            min_location_val = min_for_this_range
+        }
+    }
+
+    min_location_val
+}
+
+fn get_location_part_1(seed: usize, maps: &Vec<SrcDestMap>) -> usize {
+    let mut src: &str = "seed";
+    let mut current_location: usize = seed;
+
+    while src != "location" {
+        let map = maps.iter().filter(|map| map.src == src).next().unwrap();
+        current_location = map.get_dest(&current_location);
+        src = &map.dest
+    }
+
+    current_location
 }
 
 fn parse_input(mut reader: AocBufReader) -> (Vec<usize>, Vec<SrcDestMap>) {
@@ -69,8 +111,44 @@ struct RangeMap {
     rng_len: usize,
 }
 
+impl RangeMap {
+    /// source range end (exclusive!!!)
+    fn src_end(&self) -> usize {
+        self.src_start + self.rng_len
+    }
+
+    /// dest range end (exclusive!!!)
+    fn dest_end(&self) -> usize {
+        self.dest_start + self.rng_len
+    }
+
+    fn src_rng_contains(&self, val: usize) -> bool {
+        val >= self.src_start && val < self.src_end()
+    }
+
+    fn get_dest(&self, val: usize) -> Option<usize> {
+        if !self.src_rng_contains(val) {
+            return None;
+        }
+
+        let offset = val - self.src_start;
+        Some(self.dest_start + offset)
+    }
+}
+
 struct SrcDestMap {
     src: String,
     dest: String,
     range_maps: Vec<RangeMap>,
+}
+
+impl SrcDestMap {
+    fn get_dest(&self, from: &usize) -> usize {
+        for map in self.range_maps.iter() {
+            if let Some(dest) = map.get_dest(*from) {
+                return dest;
+            }
+        }
+        *from
+    }
 }
