@@ -1,4 +1,5 @@
 use shared::input::AocBufReader;
+use shared::range::Range;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -27,7 +28,7 @@ fn part_2(reader: AocBufReader) -> isize {
     let (seed_range_info, maps) = parse_input(reader);
     let mut seed_range_info = seed_range_info.into_iter();
 
-    let mut seed_ranges: Vec<Range> = Vec::new();
+    let mut seed_ranges: Vec<Range<isize>> = Vec::new();
     while let Some(seed_range_start) = seed_range_info.next() {
         let seed_range_len = seed_range_info
             .next()
@@ -38,7 +39,7 @@ fn part_2(reader: AocBufReader) -> isize {
         });
     }
 
-    let mut location_ranges: Vec<Range> = Vec::new();
+    let mut location_ranges: Vec<Range<isize>> = Vec::new();
     for seed_range in seed_ranges {
         location_ranges.extend(get_location_ranges_part_2(seed_range, &maps));
     }
@@ -63,9 +64,12 @@ fn get_location_part_1(seed: isize, maps: &Vec<SrcDestMap>) -> isize {
     current_location
 }
 
-fn get_location_ranges_part_2(seed_range: Range, maps: &Vec<SrcDestMap>) -> Vec<Range> {
+fn get_location_ranges_part_2(
+    seed_range: Range<isize>,
+    maps: &Vec<SrcDestMap>,
+) -> Vec<Range<isize>> {
     let mut src: &str = "seed";
-    let mut current_rngs: Vec<Range> = vec![seed_range];
+    let mut current_rngs: Vec<Range<isize>> = vec![seed_range];
 
     while src != "location" {
         let map = maps.iter().filter(|map| map.src == src).next().unwrap();
@@ -121,63 +125,6 @@ fn parse_input(mut reader: AocBufReader) -> (Vec<isize>, Vec<SrcDestMap>) {
     (seeds, maps)
 }
 
-/// end is exclusive!!!
-#[derive(Clone)]
-struct Range {
-    start: isize,
-    end: isize,
-}
-
-impl Range {
-    fn contains(&self, val: isize) -> bool {
-        val >= self.start && val < self.end
-    }
-
-    fn intersection(&self, other: &Range) -> Option<Range> {
-        if other.end <= self.start || other.start >= self.end {
-            return None;
-        }
-        Some(Range {
-            start: isize::max(self.start, other.start),
-            end: isize::min(self.end, other.end),
-        })
-    }
-
-    fn difference(&self, other: &Range) -> Vec<Range> {
-        if other.start <= self.start && other.end >= self.end {
-            return Vec::new();
-        }
-
-        match self.intersection(other) {
-            None => return vec![self.clone()],
-            _ => (),
-        }
-
-        if other.contains(self.start) && !other.contains(self.end) {
-            vec![Range {
-                start: other.end,
-                end: self.end,
-            }]
-        } else if other.contains(self.end) && !other.contains(self.start) {
-            vec![Range {
-                start: self.start,
-                end: other.start,
-            }]
-        } else {
-            vec![
-                Range {
-                    start: self.start,
-                    end: other.start,
-                },
-                Range {
-                    start: other.end,
-                    end: self.end,
-                },
-            ]
-        }
-    }
-}
-
 struct RangeMap {
     src_start: isize,
     dest_start: isize,
@@ -195,7 +142,7 @@ impl RangeMap {
         self.dest_start + self.rng_len
     }
 
-    fn src_range(&self) -> Range {
+    fn src_range(&self) -> Range<isize> {
         Range {
             start: self.src_start,
             end: self.src_end(),
@@ -219,9 +166,9 @@ impl RangeMap {
         Some(self.dest_start + offset)
     }
 
-    fn map_ranges(&self, ranges: Vec<Range>) -> (Vec<Range>, Vec<Range>) {
-        let mut result: Vec<Range> = Vec::new();
-        let mut unmapped: Vec<Range> = Vec::new();
+    fn map_ranges(&self, ranges: Vec<Range<isize>>) -> (Vec<Range<isize>>, Vec<Range<isize>>) {
+        let mut result: Vec<Range<isize>> = Vec::new();
+        let mut unmapped: Vec<Range<isize>> = Vec::new();
 
         for range in ranges {
             if let Some(intersection) = range.intersection(&self.src_range()) {
@@ -253,8 +200,8 @@ impl SrcDestMap {
         *from
     }
 
-    fn map_ranges(&self, ranges: Vec<Range>) -> Vec<Range> {
-        let mut dest_ranges: Vec<Range> = Vec::new();
+    fn map_ranges(&self, ranges: Vec<Range<isize>>) -> Vec<Range<isize>> {
+        let mut dest_ranges: Vec<Range<isize>> = Vec::new();
         for range in ranges {
             dest_ranges.extend(self.map_range(range));
         }
@@ -262,9 +209,9 @@ impl SrcDestMap {
         dest_ranges
     }
 
-    fn map_range(&self, range: Range) -> Vec<Range> {
-        let mut dest_ranges: Vec<Range> = Vec::new();
-        let mut unmapped: Vec<Range> = vec![range];
+    fn map_range(&self, range: Range<isize>) -> Vec<Range<isize>> {
+        let mut dest_ranges: Vec<Range<isize>> = Vec::new();
+        let mut unmapped: Vec<Range<isize>> = vec![range];
         for map in self.range_maps.iter() {
             let (_dest, _unmapped) = map.map_ranges(unmapped);
             unmapped = _unmapped;
