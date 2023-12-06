@@ -3,6 +3,9 @@ use shared::input::AocBufReader;
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 /// The total distance covered in the race (d) as a function
@@ -15,11 +18,16 @@ fn main() {
 /// that lie between the roots of the polynomial:
 /// -c^2 + cT - R
 fn part_1(reader: AocBufReader) -> usize {
-    let input = parse_input(reader);
+    let input = parse_input_1(reader);
     input
         .into_iter()
         .map(|(total_time, record)| n_winning_speeds_part_1(total_time, record))
         .product()
+}
+
+fn part_2(reader: AocBufReader) -> usize {
+    let (total_time, record) = parse_input_2(reader);
+    n_winning_speeds_part_1(total_time, record)
 }
 
 fn n_winning_speeds_part_1(total_time: isize, record: isize) -> usize {
@@ -65,7 +73,7 @@ fn quadratic_eq_roots(a: isize, b: isize, c: isize) -> Vec<f64> {
     ]
 }
 
-fn parse_input(mut reader: AocBufReader) -> Vec<(isize, isize)> {
+fn parse_input_1(mut reader: AocBufReader) -> Vec<(isize, isize)> {
     let times = reader.next().expect("something wrong with input");
     let distances = reader.next().expect("something wrong with input");
 
@@ -80,4 +88,20 @@ fn parse_input(mut reader: AocBufReader) -> Vec<(isize, isize)> {
             )
         })
         .collect()
+}
+
+fn parse_input_2(mut reader: AocBufReader) -> (isize, isize) {
+    let time = reader.next().expect("something wrong with input");
+    let distance = reader.next().expect("something wrong with input");
+
+    let mut time_iter = time.split_whitespace();
+    time_iter.next().unwrap();
+
+    let mut distance_iter = distance.split_whitespace();
+    distance_iter.next().unwrap();
+
+    (
+        time_iter.collect::<String>().parse::<isize>().unwrap(),
+        distance_iter.collect::<String>().parse::<isize>().unwrap(),
+    )
 }
