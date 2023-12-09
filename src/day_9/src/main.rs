@@ -3,11 +3,19 @@ use shared::input::AocBufReader;
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> isize {
     let input = parse_input(reader);
     input.into_iter().map(next_value_part_1).sum()
+}
+
+fn part_2(reader: AocBufReader) -> isize {
+    let input = parse_input(reader);
+    input.into_iter().map(next_value_part_2).sum()
 }
 
 fn next_value_part_1(numbers: Vec<isize>) -> isize {
@@ -21,6 +29,22 @@ fn next_value_part_1(numbers: Vec<isize>) -> isize {
     let mut previous_extrapolated_value: isize = 0;
     for line in lines.into_iter().rev() {
         previous_extrapolated_value = line.last().unwrap() + previous_extrapolated_value;
+    }
+
+    previous_extrapolated_value
+}
+
+fn next_value_part_2(numbers: Vec<isize>) -> isize {
+    let mut lines: Vec<Vec<isize>> = Vec::new();
+    let mut latest = numbers;
+    while !latest.iter().all(|x| x == &0) {
+        lines.push(latest);
+        latest = self_diff(lines.last().unwrap());
+    }
+
+    let mut previous_extrapolated_value: isize = 0;
+    for line in lines.into_iter().rev() {
+        previous_extrapolated_value = line.first().unwrap() - previous_extrapolated_value;
     }
 
     previous_extrapolated_value
