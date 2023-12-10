@@ -114,6 +114,19 @@ impl UCoord {
             None
         }
     }
+
+    pub fn neighbor_by_dir(&self, direction: &Direction) -> Option<UCoord> {
+        match direction {
+            Direction::North => self.north(),
+            Direction::NorthEast => self.north_east(),
+            Direction::East => self.east(),
+            Direction::SouthEast => self.south_east(),
+            Direction::South => self.south(),
+            Direction::SouthWest => self.south_west(),
+            Direction::West => self.west(),
+            Direction::NorthWest => self.north_west(),
+        }
+    }
 }
 
 #[cfg(test)]

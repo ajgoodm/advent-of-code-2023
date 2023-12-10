@@ -3,21 +3,77 @@ use shared::direction::Direction;
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let (map, start) = parse_input(reader);
+
     let starting_direction = choose_start_direction(&start, &map);
-    0
+    let second_coord = start
+        .neighbor_by_dir(&starting_direction)
+        .expect("invalid usize coord! oops!");
+    let mut walker = Walker {
+        start: start.clone(),
+        n_steps: 1,
+        current_coord: second_coord,
+        previous_step_direction: starting_direction,
+    };
+
+    while walker.current_coord != start {
+        walker.step(&map);
+    }
+
+    assert!(walker.n_steps % 2 == 0);
+    walker.n_steps / 2
+}
+
+struct Walker {
+    start: UCoord,
+    n_steps: usize,
+    current_coord: UCoord,
+    previous_step_direction: Direction,
+}
+
+impl Walker {
+    fn step(&mut self, map: &Map) {
+        let current_char = map.get(&self.current_coord).unwrap();
+
+        let direction: Direction = match (&self.previous_step_direction, current_char) {
+            (Direction::North, '|') => Direction::North,
+            (Direction::North, 'F') => Direction::East,
+            (Direction::North, '7') => Direction::West,
+            (Direction::East, '-') => Direction::East,
+            (Direction::East, '7') => Direction::South,
+            (Direction::East, 'J') => Direction::North,
+            (Direction::South, '|') => Direction::South,
+            (Direction::South, 'J') => Direction::West,
+            (Direction::South, 'L') => Direction::East,
+            (Direction::West, '-') => Direction::West,
+            (Direction::West, 'L') => Direction::North,
+            (Direction::West, 'F') => Direction::South,
+            _ => panic!(
+                "Something went wrong, previous dir {:?}, char {}",
+                self.previous_step_direction, current_char
+            ),
+        };
+        let next_coord = self
+            .current_coord
+            .neighbor_by_dir(&direction)
+            .expect("whoopsie-daisy!");
+
+        self.current_coord = next_coord;
+        self.previous_step_direction = direction;
+        self.n_steps += 1;
+    }
 }
 
 /// Given the pipes surrounding start, choose a connecting
 /// pipe and choose that direction to start our journey
 fn choose_start_direction(start: &UCoord, map: &Map) -> Direction {
     if let Some(north) = start.north() {
-        if let Some(c) = map.get(north) {
+        if let Some(c) = map.get(&north) {
             match c {
                 '|' | '7' | 'F' => return Direction::North,
                 _ => (),
@@ -26,7 +82,7 @@ fn choose_start_direction(start: &UCoord, map: &Map) -> Direction {
     }
 
     if let Some(east) = start.east() {
-        if let Some(c) = map.get(east) {
+        if let Some(c) = map.get(&east) {
             match c {
                 '-' | '7' | 'J' => return Direction::East,
                 _ => (),
@@ -35,7 +91,7 @@ fn choose_start_direction(start: &UCoord, map: &Map) -> Direction {
     }
 
     if let Some(south) = start.south() {
-        if let Some(c) = map.get(south) {
+        if let Some(c) = map.get(&south) {
             match c {
                 '|' | 'J' | 'L' => return Direction::South,
                 _ => (),
@@ -44,7 +100,7 @@ fn choose_start_direction(start: &UCoord, map: &Map) -> Direction {
     }
 
     if let Some(west) = start.west() {
-        if let Some(c) = map.get(west) {
+        if let Some(c) = map.get(&west) {
             match c {
                 '-' | 'L' | 'F' => return Direction::South,
                 _ => (),
@@ -62,7 +118,7 @@ struct Map {
 }
 
 impl Map {
-    fn get(&self, coord: UCoord) -> Option<char> {
+    fn get(&self, coord: &UCoord) -> Option<char> {
         if coord.row < self.n_rows && coord.col < self.n_cols {
             Some(self.map[coord.row][coord.col])
         } else {
