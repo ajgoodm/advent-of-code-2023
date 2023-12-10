@@ -2,6 +2,10 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
+use crate::direction;
+
+use super::direction::Direction;
+
 /// A 2D coordinate with unsigned integers
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct UCoord {
@@ -21,6 +25,94 @@ impl UCoord {
             .filter(|(row, col)| !(self.row == *row && self.col == *col))
             .map(|(row, col)| UCoord { row: row, col: col })
             .collect::<HashSet<UCoord>>()
+    }
+
+    pub fn north(&self) -> Option<UCoord> {
+        if self.row > 0 {
+            Some(UCoord {
+                row: self.row - 1,
+                col: self.col,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn north_east(&self) -> Option<UCoord> {
+        if self.row > 0 && self.col < usize::MAX {
+            Some(UCoord {
+                row: self.row - 1,
+                col: self.col + 1,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn east(&self) -> Option<UCoord> {
+        if self.col < usize::MAX {
+            Some(UCoord {
+                row: self.row,
+                col: self.col + 1,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn south_east(&self) -> Option<UCoord> {
+        if self.row < usize::MAX && self.col < usize::MAX {
+            Some(UCoord {
+                row: self.row + 1,
+                col: self.col + 1,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn south(&self) -> Option<UCoord> {
+        if self.row < usize::MAX {
+            Some(UCoord {
+                row: self.row + 1,
+                col: self.col,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn south_west(&self) -> Option<UCoord> {
+        if self.row < usize::MAX && self.col > 0 {
+            Some(UCoord {
+                row: self.row + 1,
+                col: self.col - 1,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn west(&self) -> Option<UCoord> {
+        if self.col > 0 {
+            Some(UCoord {
+                row: self.row,
+                col: self.col - 1,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn north_west(&self) -> Option<UCoord> {
+        if self.row > 0 && self.col > 0 {
+            Some(UCoord {
+                row: self.row - 1,
+                col: self.col - 1,
+            })
+        } else {
+            None
+        }
     }
 }
 
