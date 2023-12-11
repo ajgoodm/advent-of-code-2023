@@ -36,9 +36,11 @@ fn part_1(reader: AocBufReader) -> usize {
     walker.n_steps / 2
 }
 
-/// Partition coords that are adjacent to the path into coords
-/// into an interior and exterior set. Then recursively find
-/// all coords.
+/// Partition the coordinates that are not part of the loop
+/// into contiguous groups. Then iterate over the groups and
+/// classify each group as being on the interior or the exterior
+/// by comparing the handendess of the loop bounding the group
+/// with the handedness of the loop in its entirety
 fn part_2(reader: AocBufReader) -> usize {
     let (map, start) = parse_input(reader);
     let starting_direction = choose_start_direction(&start, &map);
