@@ -154,6 +154,15 @@ impl UCoord {
             Direction::NorthWest => self.north_west(),
         }
     }
+
+    pub fn manhattan_distance(&self, other: &UCoord) -> usize {
+        let max_y = self.row.max(other.row);
+        let min_y = self.row.min(other.row);
+        let max_x = self.col.max(other.col);
+        let min_x = self.col.min(other.col);
+
+        (max_y - min_y) + (max_x - min_x)
+    }
 }
 
 #[cfg(test)]
