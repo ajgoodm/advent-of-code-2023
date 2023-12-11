@@ -2,12 +2,15 @@ use shared::coords::UCoord;
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
+    let result = solution(AocBufReader::from_string("inputs/part_1.txt"), 2);
+    println!("part 1: {result}");
+
+    let result = solution(AocBufReader::from_string("inputs/part_1.txt"), 1_000_000);
     println!("part 1: {result}");
 }
 
-fn part_1(reader: AocBufReader) -> usize {
-    let coords = parse_input_part_1(reader);
+fn solution(reader: AocBufReader, expansion_factor: usize) -> usize {
+    let coords = parse_input(reader, expansion_factor);
     let n_coords = coords.len();
 
     let mut sum: usize = 0;
@@ -20,7 +23,7 @@ fn part_1(reader: AocBufReader) -> usize {
     sum
 }
 
-fn parse_input_part_1(reader: AocBufReader) -> Vec<UCoord> {
+fn parse_input(reader: AocBufReader, expansion_factor: usize) -> Vec<UCoord> {
     let input: Vec<Vec<char>> = reader
         .into_iter()
         .map(|line| line.chars().collect())
@@ -37,7 +40,7 @@ fn parse_input_part_1(reader: AocBufReader) -> Vec<UCoord> {
             .map(|row| row[compressed_col])
             .all(|c| c == '.')
         {
-            col_idx += 2
+            col_idx += expansion_factor
         } else {
             col_idx += 1
         }
@@ -54,7 +57,7 @@ fn parse_input_part_1(reader: AocBufReader) -> Vec<UCoord> {
         }
 
         if row.into_iter().all(|c| c == '.') {
-            row_idx += 2
+            row_idx += expansion_factor
         } else {
             row_idx += 1
         }
