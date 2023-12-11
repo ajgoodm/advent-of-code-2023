@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::direction;
-
 use super::direction::Direction;
 
 /// A 2D coordinate with unsigned integers
@@ -25,6 +23,35 @@ impl UCoord {
             .filter(|(row, col)| !(self.row == *row && self.col == *col))
             .map(|(row, col)| UCoord { row: row, col: col })
             .collect::<HashSet<UCoord>>()
+    }
+
+    pub fn cardinal_neighbors(&self) -> HashSet<UCoord> {
+        let mut result: HashSet<UCoord> = HashSet::new();
+        if self.row > 0 {
+            result.insert(UCoord {
+                row: self.row - 1,
+                col: self.col,
+            });
+        }
+        if self.row < usize::MAX {
+            result.insert(UCoord {
+                row: self.row + 1,
+                col: self.col,
+            });
+        }
+        if self.col > 0 {
+            result.insert(UCoord {
+                row: self.row,
+                col: self.col - 1,
+            });
+        }
+        if self.col < usize::MAX {
+            result.insert(UCoord {
+                row: self.row,
+                col: self.col + 1,
+            });
+        }
+        result
     }
 
     pub fn north(&self) -> Option<UCoord> {
