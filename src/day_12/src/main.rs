@@ -1,14 +1,35 @@
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("{result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let inputs = parse_input(reader);
 
-    0
+    inputs
+        .into_iter()
+        .map(|(picross_pattern, match_str)| {
+            picross_pattern
+                .into_iter()
+                .filter(|candidate| matches(&match_str, candidate))
+                .count()
+        })
+        .sum()
+}
+
+fn matches(match_pattern: &String, other: &String) -> bool {
+    match_pattern
+        .chars()
+        .zip(other.chars())
+        .all(|m_c| match m_c {
+            ('?', '.') | ('?', '#') | ('#', '#') | ('.', '.') => true,
+            ('#', '.') | ('.', '#') => false,
+            _ => {
+                panic!("unexpected character pairing {:?}", m_c);
+            }
+        })
 }
 
 struct Span {
@@ -146,12 +167,53 @@ fn parse_input(reader: AocBufReader) -> Vec<(PicrossPattern, String)> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_picross_iterator() {
-        let picross_pattern = PicrossPattern::new(10, vec![2, 2, 2]);
+    // #[test]
+    // fn test_picross_iterator() {
+    //     let picross_pattern = PicrossPattern::new(10, vec![2, 2, 2]);
 
-        for pattern in picross_pattern {
-            println!("{}", pattern);
+    //     for pattern in picross_pattern {
+    //         println!("{}", pattern);
+    //     }
+    // }
+
+    #[test]
+    fn test_matches() {
+        assert!(!matches(
+            &".??..??...?##.".to_string(),
+            &"...#...#...###".to_string()
+        ))
+    }
+
+    #[test]
+    fn test_input_1() {
+        let picross_pattern = PicrossPattern::new(7, vec![1, 1, 3]);
+        let match_string = "???.###".to_string();
+
+        let mut total_matches: usize = 0;
+        for pattern in picross_pattern.into_iter() {
+            if matches(&match_string, &pattern) {
+                total_matches += 1;
+            }
         }
+
+        assert_eq!(total_matches, 1);
+    }
+
+    #[test]
+    fn test_input_2() {
+        let picross_pattern = PicrossPattern::new(14, vec![1, 1, 3]);
+        let match_string = ".??..??...?##.".to_string();
+        assert_eq!(match_string.len(), picross_pattern.total_length);
+
+        let mut total_matches: usize = 0;
+        for pattern in picross_pattern.into_iter() {
+            println!("{}", pattern);
+
+            if matches(&match_string, &pattern) {
+                total_matches += 1;
+            }
+        }
+
+        assert_eq!(total_matches, 4);
     }
 }
