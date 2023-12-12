@@ -212,31 +212,35 @@ mod tests {
     fn test_count_matches() {
         let s = "...##.".to_string();
         let picross_pattern = PicrossPattern::new(s, vec![2]);
+        let mut cache: HashMap<PicrossPattern, usize> = HashMap::new();
 
-        assert_eq!(count_matches(picross_pattern), 1)
+        assert_eq!(count_matches(picross_pattern, &mut cache), 1)
     }
 
     #[test]
     fn test_count_matches_1() {
         let s = "..???.".to_string();
         let picross_pattern = PicrossPattern::new(s, vec![2]);
+        let mut cache: HashMap<PicrossPattern, usize> = HashMap::new();
 
-        assert_eq!(count_matches(picross_pattern), 2)
+        assert_eq!(count_matches(picross_pattern, &mut cache), 2)
     }
 
     #[test]
     fn test_count_matches_2() {
         let s = "#.???.".to_string();
         let picross_pattern = PicrossPattern::new(s, vec![1]);
+        let mut cache: HashMap<PicrossPattern, usize> = HashMap::new();
 
-        assert_eq!(count_matches(picross_pattern), 1)
+        assert_eq!(count_matches(picross_pattern, &mut cache), 1)
     }
 
     #[test]
     fn test_count_matches_3() {
         let s = "???.###".to_string();
         let picross_pattern = PicrossPattern::new(s, vec![1, 1, 3]);
+        let mut cache: HashMap<PicrossPattern, usize> = HashMap::new();
 
-        assert_eq!(count_matches(picross_pattern), 1)
+        assert_eq!(count_matches(picross_pattern, &mut cache), 1)
     }
 }
