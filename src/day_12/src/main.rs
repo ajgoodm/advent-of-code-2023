@@ -2,24 +2,77 @@ use shared::input::AocBufReader;
 
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
-    println!("{result}");
+    println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let inputs = parse_input(reader);
 
-    inputs
-        .into_iter()
-        .map(|(picross_pattern, match_str)| {
-            picross_pattern
-                .into_iter()
-                .filter(|candidate| matches(&match_str, candidate))
-                .count()
-        })
-        .sum()
+    let mut result: usize = 0;
+    for picross_pattern in inputs {
+        result += count_matches(picross_pattern);
+    }
+    result
 }
 
-fn matches(match_pattern: &String, other: &String) -> bool {
+fn count_matches(picross_pattern: PicrossPattern) -> usize {
+    let mut result = 0;
+    if picross_pattern.n_spans == 0 {
+        panic!("Expected some spans!");
+    } else if picross_pattern.n_spans == 1 {
+        let span_length = picross_pattern.span_lengths[0];
+        let mut span = Span {
+            start: 0,
+            length: span_length,
+        };
+
+        while span.end_idx() < picross_pattern.match_pattern_len {
+            if matches(
+                &picross_pattern.match_pattern,
+                span_to_string(&span, picross_pattern.match_pattern_len),
+            ) {
+                result += 1;
+            }
+            span.advance(1);
+        }
+    } else {
+        // recurse!
+        let remainder_required_length: usize = picross_pattern.span_lengths[1..]
+            .iter()
+            .map(|l| l + 1)
+            .sum();
+
+        let first_span_length: usize = picross_pattern.span_lengths[0];
+        let mut first_span = Span {
+            start: 0,
+            length: first_span_length,
+        };
+        while picross_pattern.match_pattern_len - first_span.end_idx() >= remainder_required_length
+        {
+            let split_at = first_span.end_idx() + 1;
+            if matches(
+                &picross_pattern.match_pattern[..split_at],
+                span_to_string(&first_span, split_at),
+            ) && (&picross_pattern.match_pattern[split_at..split_at + 1] == "."
+                || &picross_pattern.match_pattern[split_at..split_at + 1] == "?")
+            {
+                let remainder = PicrossPattern::new(
+                    picross_pattern.match_pattern[split_at + 1..].to_string(),
+                    picross_pattern.span_lengths[1..]
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<usize>>(),
+                );
+                result += count_matches(remainder);
+            }
+            first_span.advance(1);
+        }
+    }
+
+    result
+}
+
+fn matches(match_pattern: &str, other: String) -> bool {
     match_pattern
         .chars()
         .zip(other.chars())
@@ -32,6 +85,56 @@ fn matches(match_pattern: &String, other: &String) -> bool {
         })
 }
 
+fn span_to_string(span: &Span, total_length: usize) -> String {
+    let mut result: Vec<char> = vec!['.'; span.start];
+    result.extend(vec!['#'; span.length]);
+    result.extend(vec!['.'; total_length - 1 - span.end_idx()]);
+
+    let result: String = result.into_iter().collect();
+    assert_eq!(result.len(), total_length);
+    result
+}
+
+struct PicrossPattern {
+    match_pattern: String,
+    match_pattern_len: usize,
+    span_lengths: Vec<usize>,
+    n_spans: usize,
+}
+
+impl PicrossPattern {
+    fn new(match_pattern: String, span_lengths: Vec<usize>) -> Self {
+        let match_pattern_len = match_pattern.len();
+        let n_spans = span_lengths.len();
+
+        Self {
+            match_pattern: match_pattern,
+            match_pattern_len: match_pattern_len,
+            span_lengths: span_lengths,
+            n_spans: n_spans,
+        }
+    }
+}
+
+fn parse_input(reader: AocBufReader) -> Vec<PicrossPattern> {
+    let mut result: Vec<PicrossPattern> = Vec::new();
+    for line in reader {
+        let mut iter = line.split_whitespace();
+        let match_str = iter.next().unwrap().to_string();
+        let groups: Vec<usize> = iter
+            .next()
+            .unwrap()
+            .split(",")
+            .map(|x| x.parse::<usize>().unwrap())
+            .collect();
+
+        result.push(PicrossPattern::new(match_str, groups));
+    }
+
+    result
+}
+
+#[derive(Clone)]
 struct Span {
     start: usize,
     length: usize,
@@ -51,169 +154,48 @@ impl Span {
     }
 }
 
-struct PicrossPattern {
-    total_length: usize,
-    group_spans: Vec<Span>,
-    n_groups: usize,
-    exhausted: bool,
-}
-
-impl PicrossPattern {
-    fn new(total_length: usize, groups: Vec<usize>) -> Self {
-        let mut spans: Vec<Span> = Vec::new();
-        let mut cursor: usize = 0;
-        for group in groups {
-            spans.push(Span {
-                start: cursor,
-                length: group,
-            });
-            cursor += group + 1 // each group must be separated by at least one
-        }
-        let n_groups = spans.len();
-
-        Self {
-            total_length: total_length,
-            group_spans: spans,
-            n_groups: n_groups,
-            exhausted: false,
-        }
-    }
-
-    fn pattern(&self) -> String {
-        let mut chars: Vec<char> = Vec::new();
-        let mut group_spans = self.group_spans.iter();
-
-        let mut cursor: usize = 0;
-        while let Some(span) = group_spans.next() {
-            while cursor < span.start_idx() {
-                chars.push('.');
-                cursor += 1;
-            }
-
-            while cursor <= span.end_idx() {
-                chars.push('#');
-                cursor += 1;
-            }
-        }
-        while cursor < self.total_length {
-            chars.push('.');
-            cursor += 1;
-        }
-
-        chars.into_iter().collect::<String>()
-    }
-}
-
-impl Iterator for PicrossPattern {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.exhausted {
-            None
-        } else {
-            let result = self.pattern();
-
-            // update self!
-            let mut group_moved: Option<usize> = None;
-            let mut previous_group_start = self.total_length + 1;
-            for (idx, group) in self.group_spans.iter_mut().rev().enumerate() {
-                if group.end_idx() < previous_group_start - 2 {
-                    group.advance(1);
-                    group_moved = Some(self.n_groups - 1 - idx);
-                    break;
-                } else {
-                    previous_group_start = group.start_idx();
-                }
-            }
-
-            match group_moved {
-                Some(group_idx) => {
-                    let mut cursor: usize = self.group_spans[group_idx].end_idx() + 2;
-                    for to_reset_idx in (group_idx + 1)..self.n_groups {
-                        let group_to_reset = self.group_spans.get_mut(to_reset_idx).unwrap();
-                        group_to_reset.start = cursor;
-                        cursor = group_to_reset.end_idx() + 2;
-                    }
-                }
-                None => {
-                    self.exhausted = true;
-                }
-            }
-
-            Some(result)
-        }
-    }
-}
-
-fn parse_input(reader: AocBufReader) -> Vec<(PicrossPattern, String)> {
-    let mut result: Vec<(PicrossPattern, String)> = Vec::new();
-    for line in reader {
-        let mut iter = line.split_whitespace();
-        let match_str = iter.next().unwrap().to_string();
-        let groups: Vec<usize> = iter
-            .next()
-            .unwrap()
-            .split(",")
-            .map(|x| x.parse::<usize>().unwrap())
-            .collect();
-
-        result.push((PicrossPattern::new(match_str.len(), groups), match_str));
-    }
-
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // #[test]
-    // fn test_picross_iterator() {
-    //     let picross_pattern = PicrossPattern::new(10, vec![2, 2, 2]);
+    // fn test_count_matches() {
+    //     let s = "...##.".to_string();
+    //     let picross_pattern = PicrossPattern::new(s, vec![2]);
 
-    //     for pattern in picross_pattern {
-    //         println!("{}", pattern);
-    //     }
+    //     assert_eq!(
+    //         count_matches(picross_pattern),
+    //         1
+    //     )
+    // }
+
+    // #[test]
+    // fn test_count_matches_1() {
+    //     let s = "..???.".to_string();
+    //     let picross_pattern = PicrossPattern::new(s, vec![2]);
+
+    //     assert_eq!(
+    //         count_matches(picross_pattern),
+    //         2
+    //     )
+    // }
+
+    // #[test]
+    // fn test_count_matches_2() {
+    //     let s = "#.???.".to_string();
+    //     let picross_pattern = PicrossPattern::new(s, vec![1]);
+
+    //     assert_eq!(
+    //         count_matches(picross_pattern),
+    //         1
+    //     )
     // }
 
     #[test]
-    fn test_matches() {
-        assert!(!matches(
-            &".??..??...?##.".to_string(),
-            &"...#...#...###".to_string()
-        ))
-    }
+    fn test_count_matches_3() {
+        let s = "???.###".to_string();
+        let picross_pattern = PicrossPattern::new(s, vec![1, 1, 3]);
 
-    #[test]
-    fn test_input_1() {
-        let picross_pattern = PicrossPattern::new(7, vec![1, 1, 3]);
-        let match_string = "???.###".to_string();
-
-        let mut total_matches: usize = 0;
-        for pattern in picross_pattern.into_iter() {
-            if matches(&match_string, &pattern) {
-                total_matches += 1;
-            }
-        }
-
-        assert_eq!(total_matches, 1);
-    }
-
-    #[test]
-    fn test_input_2() {
-        let picross_pattern = PicrossPattern::new(14, vec![1, 1, 3]);
-        let match_string = ".??..??...?##.".to_string();
-        assert_eq!(match_string.len(), picross_pattern.total_length);
-
-        let mut total_matches: usize = 0;
-        for pattern in picross_pattern.into_iter() {
-            println!("{}", pattern);
-
-            if matches(&match_string, &pattern) {
-                total_matches += 1;
-            }
-        }
-
-        assert_eq!(total_matches, 4);
+        assert_eq!(count_matches(picross_pattern), 1)
     }
 }
