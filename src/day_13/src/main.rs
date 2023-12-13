@@ -50,49 +50,7 @@ struct Map {
 }
 
 impl Map {
-    fn left_right_reflection(&self) -> Option<usize> {
-        for col_idx in 1..self.n_cols {
-            let left = &self.cols[..col_idx];
-            let left_len = col_idx;
-
-            let right = &self.cols[col_idx..];
-            let right_len = self.n_cols - col_idx;
-
-            let short_side_len = left_len.min(right_len);
-            if left[(left_len - short_side_len)..]
-                .iter()
-                .rev()
-                .zip(right[..short_side_len].iter())
-                .all(|(left_s, right_s)| left_s == right_s)
-            {
-                return Some(col_idx);
-            }
-        }
-        None
-    }
-
-    fn up_down_reflection(&self) -> Option<usize> {
-        for row_idx in 1..self.n_rows {
-            let up = &self.rows[..row_idx];
-            let up_len = row_idx;
-
-            let down = &self.rows[row_idx..];
-            let down_len = self.n_rows - row_idx;
-
-            let short_side_len = up_len.min(down_len);
-            if up[(up_len - short_side_len)..]
-                .iter()
-                .rev()
-                .zip(down[..short_side_len].iter())
-                .all(|(up_s, down_s)| up_s == down_s)
-            {
-                return Some(row_idx);
-            }
-        }
-        None
-    }
-
-    fn left_right_smudge(&self) -> Option<usize> {
+    fn left_right_plane_w_n_diffs(&self, n_diffs: usize) -> Option<usize> {
         for col_idx in 1..self.n_cols {
             let left = &self.cols[..col_idx];
             let left_len = col_idx;
@@ -108,14 +66,14 @@ impl Map {
                 .map(|(left_s, right_s)| count_differences(left_s, right_s))
                 .sum();
 
-            if n_differences == 1 {
+            if n_differences == n_diffs {
                 return Some(col_idx);
             }
         }
         None
     }
 
-    fn up_down_smudge(&self) -> Option<usize> {
+    fn up_down_plane_w_n_diffs(&self, n_diffs: usize) -> Option<usize> {
         for row_idx in 1..self.n_rows {
             let up = &self.rows[..row_idx];
             let up_len = row_idx;
@@ -131,18 +89,27 @@ impl Map {
                 .map(|(up_s, down_s)| count_differences(up_s, down_s))
                 .sum();
 
-            if n_differences == 1 {
+            if n_differences == n_diffs {
                 return Some(row_idx);
             }
         }
         None
     }
 
-    fn print(&self) {
-        println!("\n** Map **");
-        for row in self.rows.iter() {
-            println!("{row}");
-        }
+    fn left_right_reflection(&self) -> Option<usize> {
+        self.left_right_plane_w_n_diffs(0)
+    }
+
+    fn up_down_reflection(&self) -> Option<usize> {
+        self.up_down_plane_w_n_diffs(0)
+    }
+
+    fn left_right_smudge(&self) -> Option<usize> {
+        self.left_right_plane_w_n_diffs(1)
+    }
+
+    fn up_down_smudge(&self) -> Option<usize> {
+        self.up_down_plane_w_n_diffs(1)
     }
 }
 
