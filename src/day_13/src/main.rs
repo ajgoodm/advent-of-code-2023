@@ -11,8 +11,6 @@ fn part_1(reader: AocBufReader) -> usize {
     let maps = parse_input(reader);
     maps.iter()
         .map(|m| {
-            m.print();
-
             let lr_reflection = m.left_right_reflection();
             let ud_reflection = m.up_down_reflection();
             match (lr_reflection, ud_reflection) {
