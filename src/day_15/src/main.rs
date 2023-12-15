@@ -1,3 +1,6 @@
+#![feature(linked_list_remove)]
+use std::collections::LinkedList;
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 use shared::input::AocBufReader;
@@ -28,8 +31,10 @@ fn part_2(mut reader: AocBufReader) -> usize {
 
     let mut hash_map: AoCHashMap = AoCHashMap::new();
     for x in line.split(",") {
-        let instruction = HashMapInstruction::from_str(x);
-        hash_map.execute(instruction);
+        match HashMapInstruction::from_str(x) {
+            HashMapInstruction::Insert(label, focal_length) => hash_map.insert(label, focal_length),
+            HashMapInstruction::Remove(label) => hash_map.remove(label),
+        }
     }
 
     hash_map.focal_length_sum()
@@ -51,19 +56,16 @@ impl AoCHashMap {
         AoCHashMap { boxes: boxes }
     }
 
-    fn execute(&mut self, instruction: HashMapInstruction) {
-        match instruction {
-            HashMapInstruction::Insert(label, focal_length) => {
-                let box_idx = usize::from(hash(label.clone()));
-                let aoc_box = self.boxes.get_mut(box_idx).unwrap();
-                aoc_box.insert(label, focal_length);
-            }
-            HashMapInstruction::Remove(label) => {
-                let box_idx = usize::from(hash(label.clone()));
-                let aoc_box = self.boxes.get_mut(box_idx).unwrap();
-                aoc_box.remove(label);
-            }
-        }
+    fn insert(&mut self, label: String, focal_length: usize) {
+        let box_idx = usize::from(hash(label.clone()));
+        let aoc_box = self.boxes.get_mut(box_idx).unwrap();
+        aoc_box.insert(label, focal_length);
+    }
+
+    fn remove(&mut self, label: String) {
+        let box_idx = usize::from(hash(label.clone()));
+        let aoc_box = self.boxes.get_mut(box_idx).unwrap();
+        aoc_box.remove(label);
     }
 
     fn focal_length_sum(&self) -> usize {
@@ -77,12 +79,14 @@ impl AoCHashMap {
 
 #[derive(Debug)]
 struct AocBox {
-    lenses: Vec<Lens>,
+    lenses: LinkedList<Lens>,
 }
 
 impl AocBox {
     fn new() -> Self {
-        AocBox { lenses: Vec::new() }
+        AocBox {
+            lenses: LinkedList::new(),
+        }
     }
 
     fn insert(&mut self, label: String, focal_length: usize) {
@@ -90,7 +94,7 @@ impl AocBox {
         if let Some(lens) = matching_entries.next() {
             lens.focal_length = focal_length;
         } else {
-            self.lenses.push(Lens {
+            self.lenses.push_back(Lens {
                 label: label,
                 focal_length: focal_length,
             });
