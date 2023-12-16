@@ -5,8 +5,8 @@ use shared::direction::Direction;
 use shared::input::AocBufReader;
 
 fn main() {
-    // let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
-    // println!("part 1: {result}");
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 1: {result}");
 
     let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 2: {result}");
@@ -142,15 +142,18 @@ impl LaserTable {
     /// return true. When all beams either leave the table or enter
     /// a state that has already been visisted, return false; we are done
     fn propagate_beams(&mut self) -> bool {
-        let mut new_beam_state = false;
+        let mut beam_is_alive: Vec<bool> = Vec::new();
         let n_beams_at_start = self.beams.len();
         for beam_idx in 0..n_beams_at_start {
-            if self.propagate_beam(beam_idx) {
-                new_beam_state = true;
-            }
+            beam_is_alive.push(self.propagate_beam(beam_idx));
         }
 
-        new_beam_state
+        for (idx, is_alive) in beam_is_alive.iter().enumerate().rev() {
+            if !is_alive {
+                self.beams.remove(idx);
+            }
+        }
+        beam_is_alive.into_iter().any(|x| x)
     }
 
     /// Propagate the beam at self.beams[beam_idx] mutating in place.
