@@ -5,20 +5,64 @@ use shared::direction::Direction;
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
-    println!("part 1: {result}");
+    // let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
+    // println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let mut laser_table = LaserTable::from_reader(reader);
     laser_table.add_beam(Beam::new(UCoord::new(0, 0), Direction::West));
-    loop {
-        if !laser_table.propagate_beams() {
-            break;
+    laser_table.energize();
+    laser_table.n_energized()
+}
+
+fn part_2(reader: AocBufReader) -> usize {
+    let mut laser_table = LaserTable::from_reader(reader);
+    let mut maximum_value: usize = 0;
+
+    let n_rows = laser_table.n_rows;
+    let n_cols = laser_table.n_cols;
+
+    for col in 0..n_cols {
+        laser_table.add_beam(Beam::new(UCoord::new(0, col), Direction::North));
+        laser_table.energize();
+        let n_energized = laser_table.n_energized();
+        if n_energized > maximum_value {
+            maximum_value = n_energized
         }
+        laser_table.reset();
+
+        laser_table.add_beam(Beam::new(UCoord::new(n_rows - 1, col), Direction::South));
+        laser_table.energize();
+        let n_energized = laser_table.n_energized();
+        if n_energized > maximum_value {
+            maximum_value = n_energized
+        }
+        laser_table.reset();
     }
 
-    laser_table.n_energized()
+    for row in 0..n_rows {
+        laser_table.add_beam(Beam::new(UCoord::new(row, 0), Direction::West));
+        laser_table.energize();
+        let n_energized = laser_table.n_energized();
+        if n_energized > maximum_value {
+            maximum_value = n_energized
+        }
+        laser_table.reset();
+
+        laser_table.add_beam(Beam::new(UCoord::new(row, n_cols - 1), Direction::East));
+        laser_table.energize();
+        let n_energized = laser_table.n_energized();
+        if n_energized > maximum_value {
+            maximum_value = n_energized
+        }
+        laser_table.reset();
+    }
+
+    maximum_value
 }
 
 struct LaserTable {
@@ -51,6 +95,19 @@ impl LaserTable {
     fn add_beam(&mut self, beam: Beam) {
         self.beams.push(beam.clone());
         self.visited_beam_states.insert(beam);
+    }
+
+    fn energize(&mut self) {
+        loop {
+            if !self.propagate_beams() {
+                break;
+            }
+        }
+    }
+
+    fn reset(&mut self) {
+        self.visited_beam_states = HashSet::new();
+        self.beams = Vec::new();
     }
 
     fn n_energized(&self) -> usize {
@@ -145,7 +202,7 @@ impl LaserTable {
                 }
                 let next_beam = Beam::new(beam.coord.south().unwrap(), Direction::North);
                 if !self.visited_beam_states.contains(&next_beam)
-                    && next_beam.coord.col < self.n_cols
+                    && next_beam.coord.row < self.n_rows
                 {
                     beam.update(&next_beam);
                     self.visited_beam_states.insert(next_beam);
