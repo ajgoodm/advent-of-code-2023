@@ -153,6 +153,10 @@ impl LaserTable {
         new_beam_state
     }
 
+    /// Propagate the beam at self.beams[beam_idx] mutating in place.
+    /// If the beam encounters a splitter, we may mutate self by
+    /// adding a _new_ beam to keep track of. If we add a new beam
+    /// or the subject beam reaches a new beam state return true else false.
     fn propagate_beam(&mut self, beam_idx: usize) -> bool {
         let mut beam_to_add: Option<Beam> = None;
         let mut new_beam_state = false;
