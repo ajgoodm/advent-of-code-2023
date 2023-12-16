@@ -12,6 +12,10 @@ pub struct UCoord {
 }
 
 impl UCoord {
+    pub fn new(row: usize, col: usize) -> Self {
+        Self { row: row, col: col }
+    }
+
     pub fn neighbors(&self) -> HashSet<UCoord> {
         let min_row: usize = usize::max(self.row, 1usize);
         let max_row: usize = usize::min(self.row, usize::MAX - 1);
