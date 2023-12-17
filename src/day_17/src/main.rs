@@ -5,21 +5,36 @@ use shared::direction::Direction;
 use shared::input::AocBufReader;
 
 const USIZE_RADIX: u32 = 10;
-const MAX_STRAIGHT_LINE_DIST: usize = 3;
 
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}")
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let heat_loss_map = HeatLossMap::from_reader(reader);
     let start = UCoord::new(0, 0);
     let end = UCoord::new(heat_loss_map.n_rows - 1, heat_loss_map.n_cols - 1);
-    dijkstra(start, end, &heat_loss_map)
+    dijkstra(start, end, &heat_loss_map, 0, 3)
 }
 
-fn dijkstra(start: UCoord, end: UCoord, map: &HeatLossMap) -> usize {
+fn part_2(reader: AocBufReader) -> usize {
+    let heat_loss_map = HeatLossMap::from_reader(reader);
+    let start = UCoord::new(0, 0);
+    let end = UCoord::new(heat_loss_map.n_rows - 1, heat_loss_map.n_cols - 1);
+    dijkstra(start, end, &heat_loss_map, 4, 10)
+}
+
+fn dijkstra(
+    start: UCoord,
+    end: UCoord,
+    map: &HeatLossMap,
+    min_straight_line_distance: usize,
+    max_straight_line_distance: usize,
+) -> usize {
     let mut visited_nodes: HashSet<Node> = HashSet::new();
     let mut to_visit: HashSet<Node> = HashSet::from([
         Node {
@@ -62,7 +77,8 @@ fn dijkstra(start: UCoord, end: UCoord, map: &HeatLossMap) -> usize {
         to_visit.remove(&current_node);
         visited_nodes.insert(current_node.clone());
 
-        let next_nodes = current_node.neighbors(&map);
+        let next_nodes =
+            current_node.neighbors(&map, min_straight_line_distance, max_straight_line_distance);
         for next_node in next_nodes {
             let cost_to_get_to_node = current_cost + map.get(&next_node.coord).unwrap();
             if next_node.coord == end {
@@ -96,8 +112,28 @@ struct Node {
 }
 
 impl Node {
-    fn neighbors(&self, map: &HeatLossMap) -> Vec<Node> {
+    fn neighbors(
+        &self,
+        map: &HeatLossMap,
+        min_straight_line_distance: usize,
+        max_straight_line_distance: usize,
+    ) -> Vec<Node> {
+        if self.straight_line_counter < min_straight_line_distance {
+            // we _must_ go in a straight line!
+            if let Some(neighbor) = self.coord.neighbor_by_dir(&self.direction) {
+                if map.contains(&neighbor) {
+                    return vec![Node {
+                        coord: neighbor,
+                        direction: self.direction.clone(),
+                        straight_line_counter: self.straight_line_counter + 1,
+                    }];
+                }
+            }
+            return vec![];
+        }
+
         let mut result: Vec<Node> = Vec::new();
+        // we don't _necessarily_ need to go straight and maybe we can't!
         for direction in [
             Direction::North,
             Direction::East,
@@ -105,7 +141,8 @@ impl Node {
             Direction::West,
         ] {
             if direction == self.direction {
-                if self.straight_line_counter < MAX_STRAIGHT_LINE_DIST {
+                // we can only as many as 10 in a straight line
+                if self.straight_line_counter < max_straight_line_distance {
                     if let Some(neighbor) = self.coord.neighbor_by_dir(&direction) {
                         if map.contains(&neighbor) {
                             result.push(Node {
@@ -117,6 +154,7 @@ impl Node {
                     }
                 }
             } else if direction == self.direction.reverse() {
+                // we still can't turn around
                 continue;
             } else {
                 if let Some(neighbor) = self.coord.neighbor_by_dir(&direction) {
@@ -130,6 +168,7 @@ impl Node {
                 }
             }
         }
+
         result
     }
 }
