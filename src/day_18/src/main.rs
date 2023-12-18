@@ -1,4 +1,6 @@
-use std::collections::HashSet;
+use core::panic;
+use std::collections::{HashMap, HashSet};
+use std::vec::IntoIter;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -6,6 +8,7 @@ use regex::Regex;
 use shared::coords::SCoord;
 use shared::direction::Direction;
 use shared::input::AocBufReader;
+use shared::range::Range;
 
 const HEX_RADIX: u32 = 16;
 
@@ -23,13 +26,86 @@ fn main() {
 fn part_1(reader: AocBufReader) -> usize {
     let dig_instructions = parse_input_part_1(reader);
     let trench_lines = instructions_to_lines(dig_instructions);
-    0
+    calculate_area(trench_lines)
 }
 
 fn part_2(reader: AocBufReader) -> usize {
     let dig_instructions = parse_input_part_2(reader);
     let trench_lines = instructions_to_lines(dig_instructions);
-    0
+    calculate_area(trench_lines)
+}
+
+fn calculate_area(trench_lines: Vec<TrenchLine>) -> usize {
+    let mut horizontal_values: HashSet<isize> = HashSet::new();
+    let mut vertical_lines: Vec<TrenchLine> = Vec::new();
+    for line in trench_lines.into_iter() {
+        match line {
+            TrenchLine::Horizontal(_, _) => {
+                horizontal_values.insert(line.y_plane());
+            }
+            TrenchLine::Vertical(_, _) => {
+                vertical_lines.push(line);
+            }
+        }
+    }
+
+    let mut horizontal_values: Vec<isize> = horizontal_values.into_iter().collect();
+    horizontal_values.sort();
+    let n_horizontal_values = horizontal_values.len();
+    vertical_lines.sort_by_key(|v| v.x_plane());
+
+    let mut previous_block_spans: Vec<(isize, isize)> = Vec::new();
+    let mut result: usize = 0;
+    for (y_start, y_end) in horizontal_values[..(n_horizontal_values - 1)]
+        .iter()
+        .zip(horizontal_values[1..].iter())
+    {
+        let n_rows = y_end - y_start + 1;
+        println!(
+            "ystart: {} -> y_end: {} (n_rows: {})",
+            y_start, y_end, n_rows
+        );
+
+        let mut spanning_vertical_lines = vertical_lines
+            .iter()
+            .filter(|l| l.spans(&y_start, &y_end))
+            .map(|l| l.x_plane());
+        let mut current_spans: Vec<(isize, isize)> = Vec::new();
+        while let Some(x1) = spanning_vertical_lines.next() {
+            let x2 = spanning_vertical_lines.next().unwrap();
+            current_spans.push((x1, x2));
+        }
+
+        for (v_start, v_end) in current_spans.iter() {
+            let n_cols = v_end - v_start + 1;
+            println!(
+                "  x_start: {} -> x_end {} (n_cols: {})",
+                v_start, v_end, n_cols
+            );
+
+            let block = n_rows * n_cols;
+            println!("  (block: {})", block);
+            result += usize::try_from(block).unwrap();
+
+            for (x1, x2) in previous_block_spans.iter() {
+                let previous = Range {
+                    start: *x1,
+                    end: *x2,
+                };
+                let now = Range {
+                    start: *v_start,
+                    end: *v_end,
+                };
+                if let Some(intersection) = previous.intersection(&now) {
+                    result -= usize::try_from(intersection.end - intersection.start + 1).unwrap();
+                }
+            }
+        }
+
+        previous_block_spans = current_spans;
+    }
+
+    result
 }
 
 fn parse_input_part_1(reader: AocBufReader) -> Vec<DigInstruction> {
@@ -81,12 +157,12 @@ fn instructions_to_lines(dig_instructions: Vec<DigInstruction>) -> Vec<TrenchLin
             Direction::West => {
                 let b = SCoord::new(a.row, a.col - instruction.n_steps);
                 digger = b.clone();
-                TrenchLine::Vertical(b, a)
+                TrenchLine::Horizontal(b, a)
             }
             Direction::East => {
                 let b = SCoord::new(a.row, a.col + instruction.n_steps);
                 digger = b.clone();
-                TrenchLine::Vertical(a, b)
+                TrenchLine::Horizontal(a, b)
             }
             _ => panic!("Ahhh! Diagonals"),
         };
@@ -105,6 +181,32 @@ fn instructions_to_lines(dig_instructions: Vec<DigInstruction>) -> Vec<TrenchLin
 enum TrenchLine {
     Vertical(SCoord, SCoord),
     Horizontal(SCoord, SCoord),
+}
+
+impl TrenchLine {
+    // the y_value (row) of a horizontal line; panic if called on a vertical line
+    fn y_plane(&self) -> isize {
+        match self {
+            Self::Horizontal(a, _) => a.row,
+            Self::Vertical(_, _) => panic!("Don't ask a vertical line what it's y plane is!"),
+        }
+    }
+
+    // the x_value (col) of a vertical line; panic if called on a horizontal line
+    fn x_plane(&self) -> isize {
+        match self {
+            Self::Horizontal(_, _) => panic!("Don't ask a horizontal line what it's x plane is!"),
+            Self::Vertical(a, _) => a.col,
+        }
+    }
+
+    // does the line span from min-to-max along its direction
+    fn spans(&self, min: &isize, max: &isize) -> bool {
+        match self {
+            Self::Horizontal(a, b) => a.col <= *min && b.col >= *max,
+            Self::Vertical(a, b) => a.row <= *min && b.row >= *max,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
