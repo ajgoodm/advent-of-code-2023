@@ -7,23 +7,37 @@ use shared::coords::SCoord;
 use shared::direction::Direction;
 use shared::input::AocBufReader;
 
+const HEX_RADIX: u32 = 16;
+
 static INPUT_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?<dir>[UDLR]) (?<n>[0-9]*) \(#(?<color>.*)\)$").unwrap());
+    Lazy::new(|| Regex::new(r"^(?<dir>[UDLR]) (?<n>[0-9]*) \((?<color>#.*)\)$").unwrap());
 
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/test.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
-    let dig_instructions = parse_input(reader);
+    let dig_instructions = parse_input_part_1(reader);
     let mut dig_site = DigSite::new();
     dig_site.dig_trench(dig_instructions);
     dig_site.dig_lagoon();
     dig_site.lagoon_size()
 }
 
-fn parse_input(reader: AocBufReader) -> Vec<DigInstruction> {
+fn part_2(reader: AocBufReader) -> usize {
+    let dig_instructions = parse_input_part_2(reader);
+    let mut dig_site = DigSite::new();
+    dig_site.dig_trench(dig_instructions);
+    // dig_site.dig_lagoon();
+    // dig_site.lagoon_size()
+    0
+}
+
+fn parse_input_part_1(reader: AocBufReader) -> Vec<DigInstruction> {
     reader
         .into_iter()
         .map(|line| {
@@ -38,6 +52,16 @@ fn parse_input(reader: AocBufReader) -> Vec<DigInstruction> {
                 },
                 n_steps: capture["n"].parse::<usize>().unwrap(),
             }
+        })
+        .collect()
+}
+
+fn parse_input_part_2(reader: AocBufReader) -> Vec<DigInstruction> {
+    reader
+        .into_iter()
+        .map(|line| {
+            let capture = INPUT_RE.captures(&line).unwrap();
+            parse_color_code(&capture["color"])
         })
         .collect()
 }
@@ -157,9 +181,32 @@ impl DigSite {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct DigInstruction {
     direction: Direction,
     n_steps: usize,
+}
+
+fn parse_color_code(code: &str) -> DigInstruction {
+    let direction: Direction = match code.chars().last().unwrap() {
+        '0' => Direction::East,
+        '1' => Direction::South,
+        '2' => Direction::West,
+        '3' => Direction::North,
+        _ => panic!("Trouble parsing dig instruction {}", code),
+    };
+
+    let mut n_steps: usize = 0;
+    for (place, c) in code[1..6].chars().rev().enumerate() {
+        let hex_digit = c.to_digit(HEX_RADIX).unwrap();
+        n_steps =
+            n_steps + usize::try_from(hex_digit * 16u32.pow(place.try_into().unwrap())).unwrap()
+    }
+
+    DigInstruction {
+        direction: direction,
+        n_steps: n_steps,
+    }
 }
 
 #[cfg(test)]
@@ -169,5 +216,23 @@ mod tests {
     #[test]
     fn test_regex() {
         assert!(INPUT_RE.captures("R 6 (#70c710)").is_some());
+    }
+
+    #[test]
+    fn test_parse_hex_code() {
+        assert_eq!(
+            parse_color_code("#70c710"),
+            DigInstruction {
+                direction: Direction::East,
+                n_steps: 461937
+            }
+        );
+        assert_eq!(
+            parse_color_code("#caa173"),
+            DigInstruction {
+                direction: Direction::North,
+                n_steps: 829975
+            }
+        );
     }
 }
