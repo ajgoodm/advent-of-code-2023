@@ -37,7 +37,6 @@ fn parse_input(reader: AocBufReader) -> Vec<DigInstruction> {
                     _ => panic!("problem parsing line {}", line),
                 },
                 n_steps: capture["n"].parse::<usize>().unwrap(),
-                color_code: capture["color"].to_owned(),
             }
         })
         .collect()
@@ -161,7 +160,6 @@ impl DigSite {
 struct DigInstruction {
     direction: Direction,
     n_steps: usize,
-    color_code: String,
 }
 
 #[cfg(test)]
