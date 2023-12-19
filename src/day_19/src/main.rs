@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use shared::input::AocBufReader;
+use shared::range::Range;
 
 static WORKFLOW_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<id>.*)\{(?<opers>.*),(?<dest>[^,]*)\}$").unwrap());
@@ -19,6 +20,9 @@ static XMAS_RE: Lazy<Regex> = Lazy::new(|| {
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
@@ -31,6 +35,33 @@ fn part_1(reader: AocBufReader) -> usize {
         }
     }
     result
+}
+
+fn part_2(reader: AocBufReader) -> usize {
+    let (workflows, _) = parse_input(reader);
+    let universal_present = XmasPresent {
+        x: Range {
+            start: 1usize,
+            end: 4_000,
+        },
+        m: Range {
+            start: 1usize,
+            end: 4_000,
+        },
+        a: Range {
+            start: 1usize,
+            end: 4_000,
+        },
+        s: Range {
+            start: 1usize,
+            end: 4_000,
+        },
+    };
+
+    let accepted_presents = xmas_accepted_part_2(universal_present, &workflows, "in".to_string());
+    accepted_presents
+        .into_iter()
+        .fold(0usize, |acc, m| acc + m.n_xmases())
 }
 
 fn xmas_accepted_part_1(xmas: &Xmas, workflows: &HashMap<String, Workflow>) -> bool {
@@ -46,6 +77,29 @@ fn xmas_accepted_part_1(xmas: &Xmas, workflows: &HashMap<String, Workflow>) -> b
             workflow_id = dest;
         }
     }
+}
+
+/// return the collection of XmasPresents that were accepted
+fn xmas_accepted_part_2(
+    xmas_present: XmasPresent,
+    workflows: &HashMap<String, Workflow>,
+    workflow_id: String,
+) -> Vec<XmasPresent> {
+    if workflow_id == "A" {
+        return vec![xmas_present];
+    }
+
+    if workflow_id == "R" {
+        return vec![];
+    }
+
+    let workflow = workflows.get(&workflow_id).unwrap();
+    workflow
+        .split(xmas_present)
+        .into_iter()
+        .map(|(present, wid)| xmas_accepted_part_2(present, workflows, wid))
+        .flatten()
+        .collect()
 }
 
 #[derive(Debug)]
@@ -75,8 +129,32 @@ impl Workflow {
                 }
             }
         }
-
         panic!("unreachable! Bad operation")
+    }
+
+    fn split(&self, xmas_present: XmasPresent) -> Vec<(XmasPresent, String)> {
+        let mut remainder: Vec<XmasPresent> = vec![xmas_present];
+        let mut shards: Vec<(XmasPresent, String)> = Vec::new();
+        for (operation, dest) in self.operations.iter() {
+            let mut remainder_: Vec<XmasPresent> = Vec::new();
+            for present in remainder {
+                let (to_dest, operation_remainder) = operation.split(present);
+                match operation_remainder {
+                    Some(r) => {
+                        remainder_.push(r);
+                    }
+                    None => (),
+                }
+                match to_dest {
+                    Some(t) => {
+                        shards.push((t, dest.clone()));
+                    }
+                    None => (),
+                }
+            }
+            remainder = remainder_;
+        }
+        shards
     }
 }
 
@@ -84,6 +162,15 @@ impl Workflow {
 enum Operation {
     Nullary,
     Unary(char, Comparator),
+}
+
+impl Operation {
+    fn split(&self, xmas_present: XmasPresent) -> (Option<XmasPresent>, Option<XmasPresent>) {
+        match self {
+            Self::Nullary => (Some(xmas_present), None),
+            Self::Unary(c, comparator) => xmas_present.split(c, comparator),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -111,6 +198,139 @@ struct Xmas {
 impl Xmas {
     fn total_value(&self) -> usize {
         self.x + self.m + self.a + self.s
+    }
+}
+
+/// A struct representing a set of Xmas's in a cube
+/// bounded by ranges of x, m, a, and s
+#[derive(Debug, Clone)]
+struct XmasPresent {
+    x: Range<usize>,
+    m: Range<usize>,
+    a: Range<usize>,
+    s: Range<usize>,
+}
+
+impl XmasPresent {
+    fn n_xmases(&self) -> usize {
+        (self.x.end - self.x.start + 1)
+            * (self.m.end - self.m.start + 1)
+            * (self.a.end - self.a.start + 1)
+            * (self.s.end - self.s.start + 1)
+    }
+
+    fn split(
+        self,
+        c: &char,
+        comparator: &Comparator,
+    ) -> (Option<XmasPresent>, Option<XmasPresent>) {
+        match (c, comparator) {
+            ('x', Comparator::LessThan(ref_)) => {
+                if self.x.start >= *ref_ {
+                    (None, Some(self))
+                } else if self.x.end < *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.x.end = ref_ - 1;
+                    rejected.x.start = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('x', Comparator::GreaterThan(ref_)) => {
+                if self.x.end <= *ref_ {
+                    (None, Some(self))
+                } else if self.x.start > *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.x.start = ref_ + 1;
+                    rejected.x.end = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('m', Comparator::LessThan(ref_)) => {
+                if self.m.start >= *ref_ {
+                    (None, Some(self))
+                } else if self.m.end < *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.m.end = ref_ - 1;
+                    rejected.m.start = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('m', Comparator::GreaterThan(ref_)) => {
+                if self.m.end <= *ref_ {
+                    (None, Some(self))
+                } else if self.m.start > *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.m.start = ref_ + 1;
+                    rejected.m.end = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('a', Comparator::LessThan(ref_)) => {
+                if self.a.start >= *ref_ {
+                    (None, Some(self))
+                } else if self.a.end < *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.a.end = ref_ - 1;
+                    rejected.a.start = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('a', Comparator::GreaterThan(ref_)) => {
+                if self.a.end <= *ref_ {
+                    (None, Some(self))
+                } else if self.a.start > *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.a.start = ref_ + 1;
+                    rejected.a.end = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('s', Comparator::LessThan(ref_)) => {
+                if self.s.start >= *ref_ {
+                    (None, Some(self))
+                } else if self.s.end < *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.s.end = ref_ - 1;
+                    rejected.s.start = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            ('s', Comparator::GreaterThan(ref_)) => {
+                if self.s.end <= *ref_ {
+                    (None, Some(self))
+                } else if self.s.start > *ref_ {
+                    (Some(self), None)
+                } else {
+                    let mut accepted = self.clone();
+                    let mut rejected = self;
+                    accepted.s.start = ref_ + 1;
+                    rejected.s.end = *ref_;
+                    (Some(accepted), Some(rejected))
+                }
+            }
+            _ => panic!("oh no!"),
+        }
     }
 }
 
