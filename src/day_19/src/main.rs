@@ -17,18 +17,67 @@ static XMAS_RE: Lazy<Regex> = Lazy::new(|| {
 });
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let (workflows, xmases) = parse_input(reader);
-    0
+
+    let mut result: usize = 0;
+    for xmas in xmases {
+        if xmas_accepted_part_1(&xmas, &workflows) {
+            result += xmas.total_value()
+        }
+    }
+    result
 }
 
+fn xmas_accepted_part_1(xmas: &Xmas, workflows: &HashMap<String, Workflow>) -> bool {
+    let mut workflow_id: String = "in".to_string();
+    loop {
+        let workflow = workflows.get(&workflow_id).unwrap();
+        let dest = workflow.sort(&xmas);
+        if dest == "R" {
+            return false;
+        } else if dest == "A" {
+            return true;
+        } else {
+            workflow_id = dest;
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Workflow {
     id: String,
     operations: Vec<(Operation, String)>,
+}
+
+impl Workflow {
+    fn sort(&self, xmas: &Xmas) -> String {
+        for (operation, dest) in self.operations.iter() {
+            match operation {
+                Operation::Nullary => return dest.clone(),
+                Operation::Unary(c, comparator) => {
+                    let val: usize = match c {
+                        'x' => xmas.x,
+                        'm' => xmas.m,
+                        'a' => xmas.a,
+                        's' => xmas.s,
+                        _ => panic!("Bad operation!"),
+                    };
+                    if comparator.compare(val) {
+                        return dest.clone();
+                    } else {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        panic!("unreachable! Bad operation")
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -43,11 +92,26 @@ enum Comparator {
     GreaterThan(usize),
 }
 
+impl Comparator {
+    fn compare(&self, value: usize) -> bool {
+        match self {
+            Self::LessThan(reference) => value < *reference,
+            Self::GreaterThan(reference) => value > *reference,
+        }
+    }
+}
+
 struct Xmas {
     x: usize,
     m: usize,
     a: usize,
     s: usize,
+}
+
+impl Xmas {
+    fn total_value(&self) -> usize {
+        self.x + self.m + self.a + self.s
+    }
 }
 
 fn parse_input(mut reader: AocBufReader) -> (HashMap<String, Workflow>, Vec<Xmas>) {
