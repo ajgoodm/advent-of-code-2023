@@ -1,6 +1,5 @@
 use core::panic;
-use std::collections::{HashMap, HashSet};
-use std::vec::IntoIter;
+use std::collections::HashSet;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -35,6 +34,14 @@ fn part_2(reader: AocBufReader) -> usize {
     calculate_area(trench_lines)
 }
 
+/// After doing the naive thing, have to try again :( using a strategy
+/// that does not iterate over coordinates. Parse the input as a vector
+/// of bounding lines and iterate through the lagoon in many horizontal strips.
+/// Any time there is a horizontal line at a unique value, start a new horizontal
+/// strip and calculate the area of each block in that strip by finding vertical
+/// bounding lines that span the strip (enclosing a block). Add together the area
+/// of each of these blocks and substract any bounding regions of the blocks that
+/// touch (overlap, because we're doing inclusive ranges) previously counted blocks.
 fn calculate_area(trench_lines: Vec<TrenchLine>) -> usize {
     let mut horizontal_values: HashSet<isize> = HashSet::new();
     let mut vertical_lines: Vec<TrenchLine> = Vec::new();
@@ -49,6 +56,8 @@ fn calculate_area(trench_lines: Vec<TrenchLine>) -> usize {
         }
     }
 
+    // go through the HashSet rigamarole to remove duplicate values corresponding
+    // to horizontal lines with the same y coordinate
     let mut horizontal_values: Vec<isize> = horizontal_values.into_iter().collect();
     horizontal_values.sort();
     let n_horizontal_values = horizontal_values.len();
@@ -61,32 +70,30 @@ fn calculate_area(trench_lines: Vec<TrenchLine>) -> usize {
         .zip(horizontal_values[1..].iter())
     {
         let n_rows = y_end - y_start + 1;
-        println!(
-            "ystart: {} -> y_end: {} (n_rows: {})",
-            y_start, y_end, n_rows
-        );
-
         let mut spanning_vertical_lines = vertical_lines
             .iter()
             .filter(|l| l.spans(&y_start, &y_end))
             .map(|l| l.x_plane());
+
+        // the first vertical line we encounter will always be on the left of a block
+        // because we are starting on the exterior of the lagoon. Each pair of vertical
+        // lines (a span), encloses a block.
         let mut current_spans: Vec<(isize, isize)> = Vec::new();
         while let Some(x1) = spanning_vertical_lines.next() {
+            // we expect to have an even number of vertical lines (or will panic)
             let x2 = spanning_vertical_lines.next().unwrap();
             current_spans.push((x1, x2));
         }
 
         for (v_start, v_end) in current_spans.iter() {
             let n_cols = v_end - v_start + 1;
-            println!(
-                "  x_start: {} -> x_end {} (n_cols: {})",
-                v_start, v_end, n_cols
-            );
-
             let block = n_rows * n_cols;
-            println!("  (block: {})", block);
             result += usize::try_from(block).unwrap();
 
+            // We have to work in inclusive spans, because the boundary
+            // is part of the lagoon. This means we double count the  part of exterior
+            // of any block that touches the exterior of another block. Remove the
+            // double-counted regions here by considering the spans' intersections.
             for (x1, x2) in previous_block_spans.iter() {
                 let previous = Range {
                     start: *x1,
@@ -231,10 +238,7 @@ fn parse_color_code(code: &str) -> DigInstruction {
             n_steps + isize::try_from(hex_digit * 16u32.pow(place.try_into().unwrap())).unwrap()
     }
 
-    DigInstruction {
-        direction: direction,
-        n_steps: n_steps,
-    }
+    DigInstruction { direction, n_steps }
 }
 
 #[cfg(test)]
