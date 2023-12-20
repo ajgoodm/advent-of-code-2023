@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Range<T: Ord + PartialOrd + Copy> {
     pub start: T,
     pub end: T,
