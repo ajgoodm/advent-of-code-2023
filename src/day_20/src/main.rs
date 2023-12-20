@@ -33,6 +33,29 @@ fn part_1(reader: AocBufReader) -> usize {
     module_board.n_low_pulses_sent * module_board.n_high_pulses_sent
 }
 
+/// Via manual inspection our network of modules terminates at "rx"
+/// which is supplied by a single conjunction module "&ns". Conjunction
+/// modules only emit a low pulse when they receive a high pulse AND
+/// all of their inputs most recent pulses were high pulses. Furthermore,
+/// Conjunction modules _always_ emit a pulse when they receive a pulse.
+/// the inputs to &ns are also all conjunction modules ("&dc, &rc, &vp, &cq")
+/// and all have a _single_ input. Each of _these_ are fed by conjunction
+/// modules that all have _many_ inputs. These three layers are _all_ of the
+/// conjunction modules ¯\_(ツ)_/¯.
+///
+/// &dj ----> &dc -------+
+/// &rr ----> &rv -----\ |
+/// &pb ----> &vp ----> &ns ----> rx
+/// &nl ----> &cq -----/
+///
+/// There is one broadcaster that feeds a network of flip-flop modules
+/// and each third layer conjunction module is fed by 8 or more modules
+/// meaning &dc will only emit a low pulse when &dj emits a low pulse,
+/// and &dj will only emit a low pulse when all of its most recent input pulses
+/// are "synced" (all high). There are a finite number of modules and hence
+/// there are a finite number states for the collection of inputs to our
+/// conjunction layers and with infinite prodding they must eventually reveal a cycle.
+/// The cycles for each of the inputs to &ns only line up at their least common multiple.
 fn part_2(reader: AocBufReader) -> usize {
     let modules = module_start_up(reader);
     let mut module_board = ModuleBoard::new(modules);
