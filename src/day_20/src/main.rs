@@ -33,9 +33,11 @@ fn part_1(reader: AocBufReader) -> usize {
     module_board.n_low_pulses_sent * module_board.n_high_pulses_sent
 }
 
-/// Via manual inspection our network of modules terminates at "rx"
-/// which is supplied by a single conjunction module "&ns". Conjunction
-/// modules only emit a low pulse when they receive a high pulse AND
+/// Via manual inspection (myt input file is 58 lines long)
+/// our network of modules terminates at "rx", which is supplied
+/// by a single conjunction module "&ns".
+///
+/// Conjunction modules only emit a low pulse when they receive a high pulse AND
 /// all of their inputs most recent pulses were high pulses. Furthermore,
 /// Conjunction modules _always_ emit a pulse when they receive a pulse.
 /// the inputs to &ns are also all conjunction modules ("&dc, &rc, &vp, &cq")
