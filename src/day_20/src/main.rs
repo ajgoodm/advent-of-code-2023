@@ -13,11 +13,22 @@ fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 
-    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    let result = part_2(AocBufReader::from_string("inputs/test.txt"));
     println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
+    let modules = module_start_up(reader);
+    let mut module_board = ModuleBoard::new(modules);
+
+    for _ in 0..1000 {
+        module_board.push_button();
+    }
+
+    module_board.n_low_pulses_sent * module_board.n_high_pulses_sent
+}
+
+fn part_2(reader: AocBufReader) -> usize {
     let modules = module_start_up(reader);
     let mut module_board = ModuleBoard::new(modules);
     let mut n_presses: usize = 0;
@@ -29,17 +40,6 @@ fn part_1(reader: AocBufReader) -> usize {
         }
     }
     n_presses
-}
-
-fn part_2(reader: AocBufReader) -> usize {
-    let modules = module_start_up(reader);
-    let mut module_board = ModuleBoard::new(modules);
-
-    for _ in 0..1000 {
-        module_board.push_button();
-    }
-
-    module_board.n_low_pulses_sent * module_board.n_high_pulses_sent
 }
 
 fn module_start_up(reader: AocBufReader) -> HashMap<String, Module> {
@@ -117,10 +117,6 @@ impl ModuleBoard {
         match &pt {
             PulseType::Low => self.n_low_pulses_sent += 1,
             PulseType::High => self.n_high_pulses_sent += 1,
-        }
-
-        if r == "rx" && pt == PulseType::Low {
-            self.rx_received_low = true;
         }
 
         (pt, s, r)
