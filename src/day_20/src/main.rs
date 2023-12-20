@@ -1,6 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 
+use num::integer;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -9,11 +10,15 @@ use shared::input::AocBufReader;
 static INPUT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<name>.*) -> (?<destinations>.*)$").unwrap());
 
+// All of the modules that direct inputs to `rx`.
+// They happen to be joined by a conjunction node
+const RX_INPUTS_JOINED_CONJ: [&str; 4] = ["dc", "rv", "vp", "cq"];
+
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 
-    let result = part_2(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 2: {result}");
 }
 
@@ -31,15 +36,47 @@ fn part_1(reader: AocBufReader) -> usize {
 fn part_2(reader: AocBufReader) -> usize {
     let modules = module_start_up(reader);
     let mut module_board = ModuleBoard::new(modules);
-    let mut n_presses: usize = 0;
-    loop {
+    let mut dc_emits_high: Vec<usize> = Vec::new();
+    let mut rv_emits_high: Vec<usize> = Vec::new();
+    let mut vp_emits_high: Vec<usize> = Vec::new();
+    let mut cq_emits_high: Vec<usize> = Vec::new();
+
+    for nth_press in 1..100_000 {
         module_board.push_button();
-        n_presses += 1;
-        if module_board.rx_received_low {
-            break;
+        if module_board.dc_sent_high {
+            dc_emits_high.push(nth_press);
+        }
+        if module_board.rv_sent_high {
+            rv_emits_high.push(nth_press);
+        }
+        if module_board.vp_sent_high {
+            vp_emits_high.push(nth_press);
+        }
+        if module_board.cq_sent_high {
+            cq_emits_high.push(nth_press);
         }
     }
-    n_presses
+
+    let cycle_lengths = [
+        assert_cycle(dc_emits_high),
+        assert_cycle(rv_emits_high),
+        assert_cycle(vp_emits_high),
+        assert_cycle(cq_emits_high),
+    ];
+    cycle_lengths
+        .into_iter()
+        .fold(1usize, |acc, next| integer::lcm(acc, next))
+}
+
+fn assert_cycle(periodic_signal: Vec<usize>) -> usize {
+    let mut diffs: HashSet<usize> = periodic_signal[0..]
+        .iter()
+        .zip(periodic_signal[1..].iter())
+        .map(|(and, then)| then - and)
+        .collect();
+
+    assert!(diffs.len() == 1);
+    diffs.into_iter().next().unwrap()
 }
 
 fn module_start_up(reader: AocBufReader) -> HashMap<String, Module> {
@@ -79,7 +116,10 @@ struct ModuleBoard {
     pulse_queue: VecDeque<(PulseType, String, String)>,
     n_low_pulses_sent: usize,
     n_high_pulses_sent: usize,
-    rx_received_low: bool,
+    dc_sent_high: bool,
+    rv_sent_high: bool,
+    vp_sent_high: bool,
+    cq_sent_high: bool,
 }
 
 impl ModuleBoard {
@@ -89,12 +129,21 @@ impl ModuleBoard {
             pulse_queue: VecDeque::new(),
             n_low_pulses_sent: 0,
             n_high_pulses_sent: 0,
-            rx_received_low: false,
+            dc_sent_high: false,
+            rv_sent_high: false,
+            vp_sent_high: false,
+            cq_sent_high: false,
         }
     }
 
     fn push_button(&mut self) {
         assert!(self.pulse_queue.is_empty());
+
+        self.dc_sent_high = false;
+        self.rv_sent_high = false;
+        self.vp_sent_high = false;
+        self.cq_sent_high = false;
+
         self.pulse_queue.push_back((
             PulseType::Low,
             "button".to_string(),
@@ -117,6 +166,19 @@ impl ModuleBoard {
         match &pt {
             PulseType::Low => self.n_low_pulses_sent += 1,
             PulseType::High => self.n_high_pulses_sent += 1,
+        }
+
+        if s == "dc" && pt == PulseType::High {
+            self.dc_sent_high = true;
+        }
+        if s == "rv" && pt == PulseType::High {
+            self.rv_sent_high = true;
+        }
+        if s == "vp" && pt == PulseType::High {
+            self.vp_sent_high = true;
+        }
+        if s == "cq" && pt == PulseType::High {
+            self.cq_sent_high = true;
         }
 
         (pt, s, r)
