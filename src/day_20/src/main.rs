@@ -33,7 +33,7 @@ fn part_1(reader: AocBufReader) -> usize {
     module_board.n_low_pulses_sent * module_board.n_high_pulses_sent
 }
 
-/// Via manual inspection (myt input file is 58 lines long)
+/// Via manual inspection (my input file is 58 lines long)
 /// our network of modules terminates at "rx", which is supplied
 /// by a single conjunction module "&ns".
 ///
