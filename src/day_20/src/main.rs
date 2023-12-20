@@ -52,11 +52,11 @@ fn part_1(reader: AocBufReader) -> usize {
 ///
 /// There is one broadcaster that feeds a network of flip-flop modules
 /// and each third layer conjunction module is fed by 8 or more modules
-/// meaning &dc will only emit a low pulse when &dj emits a low pulse,
-/// and &dj will only emit a low pulse when all of its most recent input pulses
+/// meaning &dc will only emit a high pulse when &dj emits a high pulse,
+/// and &dj will only emit a high pulse when all of its most recent input pulses
 /// are "synced" (all high). There are a finite number of modules and hence
-/// there are a finite number states for the collection of inputs to our
-/// conjunction layers and with infinite prodding they must eventually reveal a cycle.
+/// there are a finite number states for the collection of inputs to our
+/// conjunction layer modules and with infinite prodding they must eventually reveal a cycle.
 /// The cycles for each of the inputs to &ns only line up at their least common multiple.
 fn part_2(reader: AocBufReader) -> usize {
     let modules = module_start_up(reader);
