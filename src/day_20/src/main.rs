@@ -10,10 +10,6 @@ use shared::input::AocBufReader;
 static INPUT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<name>.*) -> (?<destinations>.*)$").unwrap());
 
-// All of the modules that direct inputs to `rx`.
-// They happen to be joined by a conjunction node
-const RX_INPUTS_JOINED_CONJ: [&str; 4] = ["dc", "rv", "vp", "cq"];
-
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
@@ -94,7 +90,7 @@ fn part_2(reader: AocBufReader) -> usize {
 }
 
 fn assert_cycle(periodic_signal: Vec<usize>) -> usize {
-    let mut diffs: HashSet<usize> = periodic_signal[0..]
+    let diffs: HashSet<usize> = periodic_signal[0..]
         .iter()
         .zip(periodic_signal[1..].iter())
         .map(|(and, then)| then - and)
@@ -337,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conjuncting() {
+    fn test_conjunction() {
         let mut module = Module {
             type_: ModuleType::Conjunction(HashMap::from([("bar".to_string(), PulseType::Low)])),
             name: "foo".to_string(),
