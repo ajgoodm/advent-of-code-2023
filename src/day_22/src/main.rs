@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use shared::coords3d::U3Coord;
 use shared::input::AocBufReader;
 use shared::range::Range;
@@ -5,15 +7,22 @@ use shared::range::Range;
 use itertools::Itertools;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let mut tetris = Tetris::new(read_bricks(reader));
     tetris.settle();
-
-    0
+    let (k_supports_v, k_supported_by_v) = tetris.dependency_graph();
+    k_supports_v
+        .iter()
+        .filter(|(_, supported)| {
+            supported
+                .iter()
+                .all(|supported| k_supported_by_v[supported].len() > 1)
+        })
+        .count()
 }
 
 struct Tetris {
@@ -33,6 +42,88 @@ impl Tetris {
         for brick in self.bricks.iter_mut() {
             brick.settle(&settled_bricks);
             settled_bricks.push(brick);
+        }
+    }
+
+    fn dependency_graph(&self) -> (HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>) {
+        let n_bricks = self.bricks.len();
+        let mut k_supports_v = HashMap::from(
+            (0..n_bricks)
+                .map(|idx| (idx, Vec::new()))
+                .collect::<HashMap<usize, Vec<usize>>>(),
+        );
+        let mut k_supported_by_v = HashMap::from(
+            (0..n_bricks)
+                .map(|idx| (idx, Vec::new()))
+                .collect::<HashMap<usize, Vec<usize>>>(),
+        );
+        for k_idx in 0..n_bricks {
+            k_supports_v.insert(k_idx, Vec::new());
+            for v_idx in 0..n_bricks {
+                if k_idx == v_idx {
+                    continue;
+                }
+                if self.bricks[k_idx].supports(&self.bricks[v_idx]) {
+                    k_supports_v.get_mut(&k_idx).unwrap().push(v_idx);
+                    k_supported_by_v.get_mut(&v_idx).unwrap().push(k_idx);
+                }
+            }
+        }
+
+        (k_supports_v, k_supported_by_v)
+    }
+
+    fn print_view_along_x(&self) {
+        println!("\n\n*** view along x ***");
+        let yz: HashSet<(usize, usize)> = self
+            .bricks
+            .iter()
+            .map(|brick| brick.viewed_along_x())
+            .flatten()
+            .collect();
+
+        let max_y: usize = yz.iter().map(|(y, _)| *y).max().unwrap();
+        let max_z: usize = yz.iter().map(|(_, z)| *z).max().unwrap();
+        for z in (0..=max_z).rev() {
+            print!("\n");
+            for y in 0..=max_y {
+                if z == 0 {
+                    print!("-");
+                } else {
+                    if yz.contains(&(y, z)) {
+                        print!("#");
+                    } else {
+                        print!(".");
+                    }
+                }
+            }
+        }
+    }
+
+    fn print_view_along_y(&self) {
+        println!("\n\n*** view along y ***");
+        let xz: HashSet<(usize, usize)> = self
+            .bricks
+            .iter()
+            .map(|brick| brick.viewed_along_y())
+            .flatten()
+            .collect();
+
+        let max_x: usize = xz.iter().map(|(x, _)| *x).max().unwrap();
+        let max_z: usize = xz.iter().map(|(_, z)| *z).max().unwrap();
+        for z in (0..=max_z).rev() {
+            print!("\n");
+            for x in 0..=max_x {
+                if z == 0 {
+                    print!("-");
+                } else {
+                    if xz.contains(&(x, z)) {
+                        print!("#");
+                    } else {
+                        print!(".");
+                    }
+                }
+            }
         }
     }
 }
@@ -82,6 +173,18 @@ impl Brick {
         xy
     }
 
+    fn viewed_along_x(&self) -> Vec<(usize, usize)> {
+        let mut yz: Vec<(usize, usize)> = self.coords.iter().map(|c| (c.y, c.z)).collect();
+        yz.sort();
+        yz
+    }
+
+    fn viewed_along_y(&self) -> Vec<(usize, usize)> {
+        let mut xz: Vec<(usize, usize)> = self.coords.iter().map(|c| (c.x, c.z)).collect();
+        xz.sort();
+        xz
+    }
+
     fn settle(&mut self, settled_bricks: &Vec<&Brick>) {
         let self_xy = self.viewed_along_z();
         let settled_coords_under_self: Vec<&U3Coord> = settled_bricks
@@ -107,6 +210,13 @@ impl Brick {
         for coord in self.coords.iter_mut() {
             coord.z -= diff;
         }
+    }
+
+    fn supports(&self, other: &Self) -> bool {
+        self.coords
+            .iter()
+            .map(|coord| coord.z_plus().unwrap())
+            .any(|c| other.coords.contains(&c))
     }
 }
 
