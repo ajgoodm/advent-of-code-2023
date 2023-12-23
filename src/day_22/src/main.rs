@@ -9,6 +9,9 @@ use itertools::Itertools;
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
@@ -25,6 +28,20 @@ fn part_1(reader: AocBufReader) -> usize {
         .count()
 }
 
+fn part_2(reader: AocBufReader) -> usize {
+    let mut tetris = Tetris::new(read_bricks(reader));
+    tetris.settle();
+    let n_bricks = tetris.bricks.len();
+
+    let mut result: usize = 0;
+    for idx in 0..n_bricks {
+        let mut copy = tetris.remove_idx_and_clone(idx);
+        result += copy.settle();
+    }
+
+    result
+}
+
 struct Tetris {
     bricks: Vec<Brick>,
 }
@@ -35,14 +52,19 @@ impl Tetris {
     }
 
     /// All bricks fall to the lost level possible
-    fn settle(&mut self) {
+    fn settle(&mut self) -> usize {
         self.bricks.sort_by_key(|brick| brick.z.start);
 
+        let mut n_fell: usize = 0;
         let mut settled_bricks: Vec<&Brick> = Vec::new();
         for brick in self.bricks.iter_mut() {
-            brick.settle(&settled_bricks);
+            if brick.settle(&settled_bricks) {
+                n_fell += 1;
+            }
             settled_bricks.push(brick);
         }
+
+        n_fell
     }
 
     fn dependency_graph(&self) -> (HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>) {
@@ -71,6 +93,18 @@ impl Tetris {
         }
 
         (k_supports_v, k_supported_by_v)
+    }
+
+    fn remove_idx_and_clone(&self, n: usize) -> Self {
+        let bricks: Vec<Brick> = self
+            .bricks
+            .iter()
+            .enumerate()
+            .filter(|(idx, _)| idx != &n)
+            .map(|(_, brick)| brick.clone())
+            .collect();
+
+        Self { bricks }
     }
 
     fn print_view_along_x(&self) {
@@ -128,6 +162,7 @@ impl Tetris {
     }
 }
 
+#[derive(Clone)]
 struct Brick {
     x: Range<usize>,
     y: Range<usize>,
@@ -185,7 +220,7 @@ impl Brick {
         xz
     }
 
-    fn settle(&mut self, settled_bricks: &Vec<&Brick>) {
+    fn settle(&mut self, settled_bricks: &Vec<&Brick>) -> bool {
         let self_xy = self.viewed_along_z();
         let settled_coords_under_self: Vec<&U3Coord> = settled_bricks
             .iter()
@@ -200,15 +235,20 @@ impl Brick {
                 None => 1,
             };
 
-        self.fall_to(level_to_settle_to);
+        self.fall_to(level_to_settle_to)
     }
 
-    fn fall_to(&mut self, z: usize) {
+    fn fall_to(&mut self, z: usize) -> bool {
         let diff = self.z.start - z;
-        self.z.start -= diff;
-        self.z.end -= diff;
-        for coord in self.coords.iter_mut() {
-            coord.z -= diff;
+        if diff == 0 {
+            false
+        } else {
+            self.z.start -= diff;
+            self.z.end -= diff;
+            for coord in self.coords.iter_mut() {
+                coord.z -= diff;
+            }
+            true
         }
     }
 
