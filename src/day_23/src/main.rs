@@ -7,11 +7,24 @@ use shared::input::AocBufReader;
 fn main() {
     let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
+
+    let result = part_2(AocBufReader::from_string("inputs/part_1.txt"));
+    println!("part 2: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
-    let map = Map::from_reader(reader);
+    let map = Map::from_reader(reader, Day23::Part1);
     map.find_longest_path()
+}
+
+fn part_2(reader: AocBufReader) -> usize {
+    let map = Map::from_reader(reader, Day23::Part2);
+    map.find_longest_path()
+}
+
+enum Day23 {
+    Part1,
+    Part2,
 }
 
 struct Map {
@@ -23,7 +36,7 @@ struct Map {
 }
 
 impl Map {
-    fn new(chars: Vec<Vec<char>>) -> Self {
+    fn new(chars: Vec<Vec<char>>, part: Day23) -> Self {
         let char_array = CharArray::new(chars);
 
         let mut start: Option<UCoord> = None;
@@ -62,7 +75,10 @@ impl Map {
             }
         }
 
-        let edges = Self::find_edges(&char_array, &nodes);
+        let edges = match part {
+            Day23::Part1 => Self::find_edges_part_1(&char_array, &nodes),
+            Day23::Part2 => Self::find_edges_part_2(&char_array, &nodes),
+        };
 
         Self {
             char_array,
@@ -102,7 +118,7 @@ impl Map {
         longest_path_length
     }
 
-    fn find_edges(
+    fn find_edges_part_1(
         char_array: &CharArray,
         nodes: &HashSet<UCoord>,
     ) -> HashMap<(UCoord, UCoord), usize> {
@@ -176,12 +192,86 @@ impl Map {
         edges
     }
 
-    fn from_reader(reader: AocBufReader) -> Self {
+    fn find_edges_part_2(
+        char_array: &CharArray,
+        nodes: &HashSet<UCoord>,
+    ) -> HashMap<(UCoord, UCoord), usize> {
+        let mut edges: HashMap<(UCoord, UCoord), usize> = HashMap::new();
+        for node in nodes {
+            let mut to_visit: Vec<(UCoord, usize)> = vec![(node.clone(), 0usize)];
+            let mut visited: HashSet<UCoord> = HashSet::new();
+            while let Some((current_node, dist)) = to_visit.pop() {
+                if nodes.contains(&current_node) && &current_node != node {
+                    edges.insert((node.clone(), current_node.clone()), dist);
+                    continue;
+                }
+                visited.insert(current_node.clone());
+                let current_to_visit_coords: HashSet<UCoord> =
+                    to_visit.iter().map(|(c, _)| c).cloned().collect();
+
+                if let Some(north) = current_node.north() {
+                    match char_array.get(&north) {
+                        None => (),
+                        Some(c) => {
+                            if c != '#'
+                                && !visited.contains(&north)
+                                && !current_to_visit_coords.contains(&north)
+                            {
+                                to_visit.push((north, dist + 1));
+                            }
+                        }
+                    }
+                }
+                if let Some(east) = current_node.east() {
+                    match char_array.get(&east) {
+                        None => (),
+                        Some(c) => {
+                            if c != '#'
+                                && !visited.contains(&east)
+                                && !current_to_visit_coords.contains(&east)
+                            {
+                                to_visit.push((east, dist + 1));
+                            }
+                        }
+                    }
+                }
+                if let Some(south) = current_node.south() {
+                    match char_array.get(&south) {
+                        None => (),
+                        Some(c) => {
+                            if c != '#'
+                                && !visited.contains(&south)
+                                && !current_to_visit_coords.contains(&south)
+                            {
+                                to_visit.push((south, dist + 1));
+                            }
+                        }
+                    }
+                }
+                if let Some(west) = current_node.west() {
+                    match char_array.get(&west) {
+                        None => (),
+                        Some(c) => {
+                            if c != '#'
+                                && !visited.contains(&west)
+                                && !current_to_visit_coords.contains(&west)
+                            {
+                                to_visit.push((west, dist + 1));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        edges
+    }
+
+    fn from_reader(reader: AocBufReader, part: Day23) -> Self {
         let chars: Vec<Vec<char>> = reader
             .into_iter()
             .map(|line| line.chars().collect::<Vec<char>>())
             .collect();
-        Self::new(chars)
+        Self::new(chars, part)
     }
 }
 
