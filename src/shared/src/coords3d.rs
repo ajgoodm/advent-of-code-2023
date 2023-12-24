@@ -1,12 +1,3 @@
-enum XyzDirection {
-    ZPlus,
-    ZMinus,
-    XPlus,
-    XMinus,
-    YPlus,
-    YMinus,
-}
-
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct U3Coord {
     pub x: usize,
@@ -65,5 +56,42 @@ impl U3Coord {
         } else {
             Some(Self::new(self.x, self.y - 1, self.z))
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+pub struct S3Coord {
+    pub x: isize,
+    pub y: isize,
+    pub z: isize,
+}
+
+impl S3Coord {
+    pub fn new(x: isize, y: isize, z: isize) -> Self {
+        Self { x, y, z }
+    }
+
+    pub fn z_plus(&self) -> Self {
+        Self::new(self.x, self.y, self.z + 1)
+    }
+
+    pub fn z_minus(&self) -> Self {
+        Self::new(self.x, self.y, self.z - 1)
+    }
+
+    pub fn y_plus(&self) -> Self {
+        Self::new(self.x, self.y + 1, self.z)
+    }
+
+    pub fn y_minus(&self) -> Self {
+        Self::new(self.x, self.y - 1, self.z)
+    }
+
+    pub fn x_plus(&self) -> Self {
+        Self::new(self.x + 1, self.y, self.z)
+    }
+
+    pub fn x_minus(&self) -> Self {
+        Self::new(self.x + 1, self.y, self.z)
     }
 }
