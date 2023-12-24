@@ -5,22 +5,13 @@ use shared::coords::UCoord;
 use shared::input::AocBufReader;
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let map = Map::from_reader(reader);
-
-    for node in map.nodes {
-        println!("{:?}", node);
-    }
-
-    for edge in map.edges {
-        println!("{:?}", edge);
-    }
-
-    0
+    map.find_longest_path()
 }
 
 struct Map {
@@ -80,6 +71,35 @@ impl Map {
             nodes,
             edges,
         }
+    }
+
+    fn find_longest_path(&self) -> usize {
+        let mut longest_path_length: usize = 0;
+        let mut living_paths: Vec<(HashSet<UCoord>, UCoord, usize)> =
+            vec![(HashSet::from([self.start.clone()]), self.start.clone(), 0)];
+        while let Some((path_coords, tip, current_dist)) = living_paths.pop() {
+            let next_dist: Vec<(UCoord, usize)> = self
+                .edges
+                .iter()
+                .filter(|((from, to), dist)| from == &tip && !path_coords.contains(to))
+                .map(|((_, to), dist)| (to.clone(), *dist))
+                .collect();
+
+            for (next, dist) in next_dist {
+                if next == self.end {
+                    let path_lenth = current_dist + dist;
+                    if path_lenth > longest_path_length {
+                        longest_path_length = path_lenth;
+                    }
+                } else {
+                    let mut next_coords = path_coords.clone();
+                    next_coords.insert(next.clone());
+                    living_paths.push((next_coords, next, current_dist + dist));
+                }
+            }
+        }
+
+        longest_path_length
     }
 
     fn find_edges(
