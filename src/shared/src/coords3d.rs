@@ -1,12 +1,3 @@
-enum XyzDirection {
-    ZPlus,
-    ZMinus,
-    XPlus,
-    XMinus,
-    YPlus,
-    YMinus,
-}
-
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct U3Coord {
     pub x: usize,
