@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::DefaultHasher;
 
 use shared::coords::UCoord;
 use shared::input::AocBufReader;
@@ -28,10 +27,8 @@ enum Day23 {
 }
 
 struct Map {
-    char_array: CharArray,
     start: UCoord,
     end: UCoord,
-    nodes: HashSet<UCoord>,
     edges: HashMap<(UCoord, UCoord), usize>,
 }
 
@@ -43,8 +40,8 @@ impl Map {
         let mut end: Option<UCoord> = None;
         let mut nodes: HashSet<UCoord> = HashSet::new();
 
-        for (row_idx, row) in char_array.chars.iter().enumerate() {
-            for (col_idx, c) in row.iter().enumerate() {
+        for row_idx in 0..char_array.n_rows {
+            for col_idx in 0..char_array.n_cols {
                 let coord = UCoord::new(row_idx, col_idx);
                 if row_idx == 0 {
                     match char_array.get(&UCoord::new(row_idx, col_idx)).unwrap() {
@@ -59,7 +56,6 @@ impl Map {
                     match char_array.get(&UCoord::new(row_idx, col_idx)).unwrap() {
                         '#' => (),
                         '.' => {
-                            let end_coord = UCoord::new(row_idx, col_idx);
                             nodes.insert(coord.clone());
                             end = Some(coord);
                         }
@@ -81,10 +77,8 @@ impl Map {
         };
 
         Self {
-            char_array,
             start: start.unwrap(),
             end: end.unwrap(),
-            nodes,
             edges,
         }
     }
@@ -97,7 +91,7 @@ impl Map {
             let next_dist: Vec<(UCoord, usize)> = self
                 .edges
                 .iter()
-                .filter(|((from, to), dist)| from == &tip && !path_coords.contains(to))
+                .filter(|((from, to), _)| from == &tip && !path_coords.contains(to))
                 .map(|((_, to), dist)| (to.clone(), *dist))
                 .collect();
 
