@@ -66,7 +66,6 @@ fn part_2(reader: AocBufReader) -> isize {
     let vx = find_velocity_component(velocity_x, R3Component::X);
     let vy = find_velocity_component(velocity_y, R3Component::Y);
     let vz = find_velocity_component(velocity_z, R3Component::Z);
-    println!("velocity: ({}, {}, {})", vx, vy, vz);
 
     // Now that we know the velocity vector, we can find the exact line along
     // which we must throw the rock. Do this by choosing two skew hail
