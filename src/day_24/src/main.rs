@@ -134,6 +134,9 @@ fn find_velocity_component(
     vx.into_iter().next().unwrap()
 }
 
+/// Use v_rock and two hail stone paths to find the rock's unique
+/// origin. Note that all of the float futzing is necessary because
+/// some of our arithmetic exceeds isize::MAXIMUM resulting in overflow panics.
 fn find_rock_origin(v_rock: S3Coord, h1: Hail, h2: Hail) -> S3Coord {
     // find the plane containing h1's path and the rock's velocity
     let normal_vec = s3_coord_to_vec_f64(&v_rock).cross(&Vector3::new(h1.vx(), h1.vy(), h1.vz()));
