@@ -37,7 +37,7 @@ fn part_1(reader: AocBufReader, min_xy: isize, max_xy: isize) -> usize {
     n_collisions
 }
 
-fn part_2(reader: AocBufReader) -> usize {
+fn part_2(reader: AocBufReader) -> isize {
     let hail_stones = parse_input(reader);
 
     let mut velocity_x: HashMap<isize, Vec<Hail>> = HashMap::new();
@@ -70,14 +70,14 @@ fn part_2(reader: AocBufReader) -> usize {
 
     // Now that we know the velocity vector, we can find the exact line along
     // which we must throw the rock. Do this by choosing two skew hail
-    // stone paths and constructing the plane containing the hail stone and our
-    // velocity vector. The rock's actual trajectory must be the intersection
-    // of these two planes.
+    // stone paths. Use the first hail stone path along with the rock's velocity
+    // vector to construct a plane containing the hail stone path. Then intersect
+    // the second hail stone's path with this plane to find the point where it
+    // is struck by the rock.
     let hail_1 = hail_stones[0].clone();
     let hail_2 = hail_stones[1].clone();
-    find_hailstone_path(S3Coord::new(vx, vy, vz), hail_1, hail_2);
-
-    0
+    let rock_origin = find_rock_origin(S3Coord::new(vx, vy, vz), hail_1, hail_2);
+    rock_origin.x + rock_origin.y + rock_origin.z
 }
 
 enum R3Component {
@@ -134,29 +134,46 @@ fn find_velocity_component(
     vx.into_iter().next().unwrap()
 }
 
-fn find_hailstone_path(v_rock: S3Coord, h1: Hail, h2: Hail) {
+fn find_rock_origin(v_rock: S3Coord, h1: Hail, h2: Hail) -> S3Coord {
     // find the plane containing h1's path and the rock's velocity
-    let normal_vec_1 = s3_coord_to_vec_f64(&v_rock).cross(&Vector3::new(h1.vx(), h1.vy(), h1.vz()));
-    let a1 = normal_vec_1.x;
-    let b1 = normal_vec_1.y;
-    let c1 = normal_vec_1.z;
-    let d1 = a1 * h1.rx() + b1 * h1.ry() + c1 * h1.rz();
+    let normal_vec = s3_coord_to_vec_f64(&v_rock).cross(&Vector3::new(h1.vx(), h1.vy(), h1.vz()));
+    // The equation for a plane with normal vector (a, b, c) can be written
+    // ax + by + cz = D, where D can be found by using an (x, y, z) coordinate
+    // contained in the plane (h1's position).
+    let a = normal_vec.x;
+    let b = normal_vec.y;
+    let c = normal_vec.z;
+    let d = a * h1.rx() + b * h1.ry() + c * h1.rz();
 
-    let normal_vec_2 = s3_coord_to_vec_f64(&v_rock).cross(&Vector3::new(h2.vx(), h2.vy(), h2.vz()));
-    let a2 = normal_vec_2.x;
-    let b2 = normal_vec_2.y;
-    let c2 = normal_vec_2.z;
-    let d2 = a2 * h2.rx() + b2 * h2.ry() + c2 * h2.rz();
+    // Hail stone 2 (h2) follows a parametrized path P(t) = (x(t), y(t), z(t)) where
+    //   x(t) = x0 + vx * t
+    //   y(t) = y0 + vy * t
+    //   z(t) = z0 + vz * t
+    // We can find the critical time when the stone strikes this line by finding
+    // t0 such that the line intersects our plane (by plugging the parametrized
+    // equations for x, y, and z into ax + by + cz = D)
+    let t0_f64: f64 =
+        (d - (a * h2.rx() + b * h2.ry() + c * h2.rz())) / (a * h2.vx() + b * h2.vy() + c * h2.vz());
+    let t0 = t0_f64.round();
 
-    // at z = 0;
-    let z: f64 = 0.0;
-    let x: f64 = (d2 - (b2 * d1 / b1)) / (a2 - (b2 * a1 / b1));
-    let y: f64 = (d1 - (a1 * x)) / b1;
-    println!("x: {x} - y: {y}");
+    // this should be an integer in our discretized problem
+    assert!(f64::abs(t0 - t0_f64) < 0.001);
+    let t0 = t0 as isize;
 
-    let v_rock = s3_coord_to_vec_f64(&v_rock);
-    println!("p0 - {:?}", p0);
-    println!("h1 - {:?}", h1.position);
+    // We know the rock is at hail stone 2's position at t0
+    let h2_collision_coord: S3Coord = S3Coord::new(
+        h2.position.x + t0 * h2.velocity.x,
+        h2.position.y + t0 * h2.velocity.y,
+        h2.position.z + t0 * h2.velocity.z,
+    );
+
+    // we can see where the rock started at at t=0, working
+    // backward from this collision
+    S3Coord::new(
+        h2_collision_coord.x - t0 * v_rock.x,
+        h2_collision_coord.y - t0 * v_rock.y,
+        h2_collision_coord.z - t0 * v_rock.z,
+    )
 }
 
 fn s3_coord_to_vec_f64(u: &S3Coord) -> Vector3<f64> {
@@ -170,10 +187,6 @@ struct Hail {
 }
 
 impl Hail {
-    fn new(position: S3Coord, velocity: S3Coord) -> Self {
-        Self { position, velocity }
-    }
-
     fn rx(&self) -> f64 {
         self.position.x as f64
     }
@@ -222,14 +235,14 @@ impl Hail {
         } else {
             let x_intersect = (b_other - b_self) / (m_self - m_other);
             let y_intersect = m_self * x_intersect + b_self;
-            let collide_in_the_future = (((x_intersect >= self.rx()) == (self.vx() > 0.0))
-                && ((x_intersect >= other.rx()) == (other.vx() > 0.0)));
+            let collide_in_the_future = ((x_intersect >= self.rx()) == (self.vx() > 0.0))
+                && ((x_intersect >= other.rx()) == (other.vx() > 0.0));
 
-            (collide_in_the_future
+            collide_in_the_future
                 && x_intersect >= min_xy
                 && x_intersect <= max_xy
                 && y_intersect >= min_xy
-                && y_intersect <= max_xy)
+                && y_intersect <= max_xy
         }
     }
 }
