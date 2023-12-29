@@ -11,7 +11,22 @@ fn main() {
 
 fn part_1(reader: AocBufReader) -> usize {
     let graph = Graph::from_reader(reader);
-    let nodes: Vec<String> = graph.from_to.keys().cloned().collect();
+    let edges = graph.edges();
+    println!("There are {} edges", edges.len());
+
+    // let combinations = edges.into_iter().combinations(3)
+    //     .map(|xyz| {
+    //         let mut xyz = xyz.into_iter();
+    //         (
+    //             xyz.next().unwrap(),
+    //             xyz.next().unwrap(),
+    //             xyz.next().unwrap(),
+    //         )
+    //     }).collect::<Vec<((String, String), (String, String), (String, String))>>();
+
+    // println!("there are {} combinations; yikes!", {combinations.len()});
+
+    0
 }
 
 #[derive(Clone)]
@@ -25,12 +40,7 @@ impl Graph {
         for line in reader {
             let mut from_to_str = line.split(": ");
             let from = from_to_str.next().unwrap().to_owned();
-            let to: Vec<String> = from_to_str
-                .next()
-                .unwrap()
-                .split_whitespace()
-                .map(|x| x.to_string())
-                .collect();
+            let to: Vec<String> = from_to_str.next().unwrap().split_whitespace().map(|x| x.to_string()).collect();
 
             if !from_to.contains_key(&from) {
                 from_to.insert(from.clone(), Vec::new());
@@ -56,13 +66,26 @@ impl Graph {
         Self { from_to }
     }
 
+    fn edges(&self) -> HashSet<(String, String)> {
+        let mut nodes: HashSet<(String, String)> = HashSet::new();
+        for (to, dests) in self.from_to.iter() {
+            for dest in dests {
+                let mut pair = vec![to, dest];
+                pair.sort();
+                nodes.insert((pair[0].clone(), pair[1].clone()));
+            }
+        }
+
+        nodes
+    }
+
     fn get_connected_groups(&self) -> Vec<HashSet<String>> {
         let mut connected_groups: Vec<HashSet<String>> = Vec::new();
         let mut all_nodes: HashSet<String> = self.from_to.keys().cloned().collect();
         loop {
             let n_remaining = all_nodes.len();
             if n_remaining == 0 {
-                break;
+                break
             }
 
             let next = all_nodes.iter().next().unwrap().clone();
@@ -102,7 +125,7 @@ impl Graph {
                 for (idx, dest) in dests.iter().enumerate() {
                     if dest == node_2 {
                         to_remove = Some(idx);
-                        break;
+                        break
                     }
                 }
 
@@ -116,7 +139,7 @@ impl Graph {
                 for (idx, dest) in dests.iter().enumerate() {
                     if dest == node_1 {
                         to_remove = Some(idx);
-                        break;
+                        break
                     }
                 }
 
