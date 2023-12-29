@@ -1,152 +1,127 @@
 use std::collections::{HashMap, HashSet};
+use std::mem;
 
 use shared::input::AocBufReader;
 
-use itertools::Itertools;
+use rand::{rngs::ThreadRng, Rng};
 
 fn main() {
-    let result = part_1(AocBufReader::from_string("inputs/test.txt"));
+    let result = part_1(AocBufReader::from_string("inputs/part_1.txt"));
     println!("part 1: {result}");
 }
 
 fn part_1(reader: AocBufReader) -> usize {
     let graph = Graph::from_reader(reader);
-    let edges = graph.edges();
-    println!("There are {} edges", edges.len());
 
-    // let combinations = edges.into_iter().combinations(3)
-    //     .map(|xyz| {
-    //         let mut xyz = xyz.into_iter();
-    //         (
-    //             xyz.next().unwrap(),
-    //             xyz.next().unwrap(),
-    //             xyz.next().unwrap(),
-    //         )
-    //     }).collect::<Vec<((String, String), (String, String), (String, String))>>();
+    let mut minimum_cut: usize = usize::MAX;
+    let mut copy: Graph;
+    loop {
+        copy = graph.clone();
+        copy.find_cut();
 
-    // println!("there are {} combinations; yikes!", {combinations.len()});
+        if copy.edges.len() < minimum_cut {
+            minimum_cut = copy.edges.len();
+            println!("found new minimum cut {}", minimum_cut);
+        }
 
-    0
+        if copy.edges.len() == 3 {
+            // we've found the minimum cut!
+            break;
+        }
+    }
+    copy.node_sizes.values().fold(1usize, |acc, x| acc * x)
 }
 
 #[derive(Clone)]
 struct Graph {
-    from_to: HashMap<String, Vec<String>>,
+    edges: Vec<(String, String)>,
+    node_sizes: HashMap<String, usize>,
+    rng: ThreadRng,
 }
 
 impl Graph {
     fn from_reader(reader: AocBufReader) -> Self {
-        let mut from_to: HashMap<String, Vec<String>> = HashMap::new();
+        let mut edges: Vec<(String, String)> = Vec::new();
+        let mut node_sizes: HashMap<String, usize> = HashMap::new();
         for line in reader {
             let mut from_to_str = line.split(": ");
             let from = from_to_str.next().unwrap().to_owned();
-            let to: Vec<String> = from_to_str.next().unwrap().split_whitespace().map(|x| x.to_string()).collect();
+            let to: Vec<String> = from_to_str
+                .next()
+                .unwrap()
+                .split_whitespace()
+                .map(|x| x.to_string())
+                .collect();
 
-            if !from_to.contains_key(&from) {
-                from_to.insert(from.clone(), Vec::new());
-            }
+            node_sizes.insert(from.clone(), 1);
             for dest in to {
-                let dests = from_to.get_mut(&from).unwrap();
-                if !dests.contains(&dest) {
-                    dests.push(dest.clone());
-                }
+                node_sizes.insert(dest.clone(), 1);
 
-                // now put the opposite mapping in!
-                if !from_to.contains_key(&dest) {
-                    from_to.insert(dest.clone(), vec![from.clone()]);
-                } else {
-                    let tos = from_to.get_mut(&dest).unwrap();
-                    if !tos.contains(&from) {
-                        tos.push(from.clone());
-                    }
+                let mut edge: Vec<String> = vec![from.clone(), dest];
+                edge.sort();
+                let edge = (edge[0].clone(), edge[1].clone());
+                if !edges.contains(&edge) {
+                    edges.push(edge);
                 }
             }
         }
 
-        Self { from_to }
-    }
-
-    fn edges(&self) -> HashSet<(String, String)> {
-        let mut nodes: HashSet<(String, String)> = HashSet::new();
-        for (to, dests) in self.from_to.iter() {
-            for dest in dests {
-                let mut pair = vec![to, dest];
-                pair.sort();
-                nodes.insert((pair[0].clone(), pair[1].clone()));
-            }
+        Self {
+            edges,
+            node_sizes,
+            rng: rand::thread_rng(),
         }
-
-        nodes
     }
 
-    fn get_connected_groups(&self) -> Vec<HashSet<String>> {
-        let mut connected_groups: Vec<HashSet<String>> = Vec::new();
-        let mut all_nodes: HashSet<String> = self.from_to.keys().cloned().collect();
+    fn find_cut(&mut self) {
         loop {
-            let n_remaining = all_nodes.len();
-            if n_remaining == 0 {
-                break
+            self.contract();
+            if self.node_sizes.len() == 2 {
+                // we've contracted our map into a single cut.
+                break;
             }
-
-            let next = all_nodes.iter().next().unwrap().clone();
-            all_nodes.remove(&next);
-
-            let mut to_visit: Vec<String> = vec![next];
-            let mut visited: HashSet<String> = HashSet::new();
-            while let Some(group_member) = to_visit.pop() {
-                let neighbors = self.get_neighbors(&group_member);
-                visited.insert(group_member);
-                for neighbor in neighbors {
-                    if !visited.contains(&neighbor) && !to_visit.contains(&neighbor) {
-                        to_visit.push(neighbor)
-                    }
-                }
-            }
-
-            all_nodes = all_nodes.difference(&visited).cloned().collect();
-            connected_groups.push(visited);
-        }
-
-        connected_groups
-    }
-
-    fn get_neighbors(&self, node: &String) -> Vec<String> {
-        if !self.from_to.contains_key(node) {
-            Vec::new()
-        } else {
-            self.from_to.get(node).unwrap().clone()
         }
     }
 
-    fn delete_edge(&mut self, node_1: &String, node_2: &String) {
-        for (from, dests) in self.from_to.iter_mut() {
-            if from == node_1 {
-                let mut to_remove: Option<usize> = None;
-                for (idx, dest) in dests.iter().enumerate() {
-                    if dest == node_2 {
-                        to_remove = Some(idx);
-                        break
-                    }
+    fn contract(&mut self) {
+        let edge = self.get_random_edge().clone();
+
+        let (node_1, node_2) = &edge;
+        let node_1_size = *(self.node_sizes.get(node_1).unwrap());
+        let node_2_size = *(self.node_sizes.get(node_2).unwrap());
+
+        self.node_sizes.remove(node_1);
+        self.node_sizes.remove(node_2);
+
+        let contracted: String = [node_1.clone(), node_2.clone()].join("-");
+        self.node_sizes
+            .insert(contracted.clone(), node_1_size + node_2_size);
+
+        self.edges = mem::take(&mut self.edges)
+            .into_iter()
+            .filter(|edge_| edge_ != &edge)
+            .map(|(n1, n2)| {
+                let mut v: Vec<String> = vec![];
+                if &n1 == node_1 || &n1 == node_2 {
+                    v.push(contracted.clone());
+                } else {
+                    v.push(n1);
                 }
 
-                if let Some(idx) = to_remove {
-                    dests.swap_remove(idx);
-                }
-            }
-
-            if from == node_2 {
-                let mut to_remove: Option<usize> = None;
-                for (idx, dest) in dests.iter().enumerate() {
-                    if dest == node_1 {
-                        to_remove = Some(idx);
-                        break
-                    }
+                if &n2 == node_1 || &n2 == node_2 {
+                    v.push(contracted.clone());
+                } else {
+                    v.push(n2);
                 }
 
-                if let Some(idx) = to_remove {
-                    dests.swap_remove(idx);
-                }
-            }
-        }
+                v.sort();
+                (v[0].clone(), v[1].clone())
+            })
+            .collect();
+    }
+
+    fn get_random_edge(&mut self) -> &(String, String) {
+        let idx: usize = self.rng.gen_range(0..self.edges.len());
+        self.edges.get(idx).unwrap()
     }
 }
