@@ -73,6 +73,14 @@ impl Graph {
         }
     }
 
+    /// We've been given a known minimum cut value (3) and are tasked
+    /// with finding the partition of the vertices that achieves this cut.
+    /// This is a min-cut problem and we'll use Karger's algorithm, which
+    /// randomly finds _some_ cut and then halts when we find one that
+    /// is the minimum. We find a cut by iteratively choosing a random edge
+    /// and merging the indices connected by the edge.
+    ///
+    /// https://en.wikipedia.org/wiki/Karger%27s_algorithm
     fn find_cut(&mut self) {
         loop {
             self.contract();
