@@ -96,14 +96,14 @@ enum R3Component {
 ///
 /// We'll find the unique velocity value by considering the pairwise collection of position
 /// differences in our special cohort and consider velocity candidates that satisfy this condition
-/// (delta_position_ij) % v_candidate == 0 for all pairs ij. This will yield a set of plausible
-/// velocities. If we do the same for every cohort of hail stones with shared velocity components
-/// and find the set-intersection of all sets of candidates, we are left with a single candidate,
+/// (delta_position_ij) % (v_rock_candidate - v_shared) == 0 for all pairs ij. This will yield a
+/// set of plausible velocities. If we do the same for every cohort of hail stones with shared velocity
+/// components and find the set-intersection of all sets of candidates, we are left with a single candidate,
 /// the actual velocity component. Do this for each component and we have our velocity vector!
 ///
-/// One rare case is for stones to have the _same_ position (in a given coordinate) and the same
-/// velocity. The difference in there position is 0; in this case, the rock must have exactly
-/// their velocity.
+/// One rare case that we must also account is hail stones that have the _same_ position (in a given coordinate)
+/// and the same velocity along that coordinate. The difference in there position is 0; in this case,
+/// the rock must have exactly their shared velocity along that component.
 fn find_velocity_component(
     hail_by_velocity_component: HashMap<isize, Vec<Hail>>,
     r3_component: R3Component,
@@ -114,7 +114,7 @@ fn find_velocity_component(
         .filter(|(_, hail_stones)| hail_stones.len() > 1)
     {
         let n_hail_stones = hail_stones.len();
-        let mut delta: Vec<isize> = Vec::new();
+        let mut position_deltas: Vec<isize> = Vec::new();
         for idx_1 in 0..n_hail_stones {
             for idx_2 in 0..n_hail_stones {
                 if idx_2 > idx_1 {
@@ -129,19 +129,24 @@ fn find_velocity_component(
                             hail_stones[idx_2].position.z - hail_stones[idx_1].position.z
                         }
                     };
-                    delta.push(isize::abs(d));
+                    position_deltas.push(isize::abs(d));
                 }
             }
         }
 
         let mut candidate_v: HashSet<isize> = HashSet::new();
-        for candidate in -1 * VELOCITY_BOUNDS..VELOCITY_BOUNDS {
-            let diff = isize::abs(candidate - v);
-            if diff == 0 || delta.iter().all(|d_| d_ % diff == 0) {
-                candidate_v.insert(candidate);
+        if position_deltas.iter().all(|d| d == &0isize) {
+            // all hail stones in this cohort have the same coordinate along this axis.
+            // the rock can only have their (shared) velocity
+            candidate_v.insert(v);
+        } else {
+            for candidate in -1 * VELOCITY_BOUNDS..VELOCITY_BOUNDS {
+                let velocity_diff = isize::abs(candidate - v);
+                if velocity_diff != 0 && position_deltas.iter().all(|d_| d_ % velocity_diff == 0) {
+                    candidate_v.insert(candidate);
+                }
             }
         }
-
         global_candiates.push(candidate_v);
     }
     let first = global_candiates[0].clone();
