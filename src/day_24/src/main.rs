@@ -85,6 +85,25 @@ enum R3Component {
     Z,
 }
 
+/// We're going to look for hail stones that share a velocity component (e.g. h1.vx == h2.vx)
+/// (we can consider the three velocity components independently). Consider the problem from the
+/// frame of reference of such a pair (or more) of hail stones. In their frame (in this dimension),
+/// all stones w/ the shared velocity component are stationary. The rock is moving relative to the
+/// stones in discreet steps with a size equal to the _difference_ between its velocity and the
+/// velocity shared by the stones in this special collection. Notice that this difference must
+/// divide the pair-wise differences in position between each hail stone in our special cohort.
+/// If it didn't, the rock would "miss" a hail stone.
+///
+/// We'll find the unique velocity value by considering the pairwise collection of position
+/// differences in our special cohort and consider velocity candidates that satisfy this condition
+/// (delta_position_ij) % v_candidate == 0 for all pairs ij. This will yield a set of plausible
+/// velocities. If we do the same for every cohort of hail stones with shared velocity components
+/// and find the set-intersection of all sets of candidates, we are left with a single candidate,
+/// the actual velocity component. Do this for each component and we have our velocity vector!
+///
+/// One rare case is for stones to have the _same_ position (in a given coordinate) and the same
+/// velocity. The difference in there position is 0; in this case, the rock must have exactly
+/// their velocity.
 fn find_velocity_component(
     hail_by_velocity_component: HashMap<isize, Vec<Hail>>,
     r3_component: R3Component,
